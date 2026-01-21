@@ -45,10 +45,10 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const App: React.FC = () => {
   // --- AUTH HOOK ---
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isGuest } = useAuth();
 
   // --- STATE ---
-  const [view, setView] = useState<ViewType>('login'); // Default to login
+  const [view, setView] = useState<ViewType>('login'); 
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -67,19 +67,20 @@ const App: React.FC = () => {
 
   // --- EFFECTS ---
 
-  // Handle Authentication State Changes
+  // Handle Authentication State Changes & Initial Data Load
   useEffect(() => {
     if (authLoading) return;
 
     if (user) {
         setView('dashboard');
         fetchProjectsFromCloud(user.uid);
+    } else if (isGuest) {
+        setView('dashboard');
+        loadProjectsFromLocalStorage();
     } else {
-        // Fallback to local storage if guest or logged out, or show login screen
-        // For this design, we force login view if not auth, but check local for data just in case we allow guest mode later
         setView('login');
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isGuest]);
 
   // Load Settings from LocalStorage (User preferences are usually local-first)
   useEffect(() => {
@@ -95,8 +96,24 @@ const App: React.FC = () => {
 
   // --- DATA SYNC FUNCTIONS ---
 
+  const loadProjectsFromLocalStorage = () => {
+      const stored = localStorage.getItem('hotel_revenue_pro_projects');
+      if (stored) {
+          try {
+              setSavedProjects(JSON.parse(stored));
+          } catch (e) {
+              console.error("Failed to load local projects", e);
+          }
+      } else {
+          setSavedProjects([]);
+      }
+  };
+
   const fetchProjectsFromCloud = async (uid: string) => {
-      if (!db) return; // Fallback to local only if firebase failed
+      if (!db) {
+          loadProjectsFromLocalStorage();
+          return;
+      }
       setIsLoadingData(true);
       try {
           const q = query(collection(db, "projects"), where("userId", "==", uid));
@@ -108,9 +125,7 @@ const App: React.FC = () => {
           setSavedProjects(projects);
       } catch (error) {
           console.error("Error fetching projects: ", error);
-          // Fallback to local storage
-          const stored = localStorage.getItem('hotel_revenue_pro_projects');
-          if (stored) setSavedProjects(JSON.parse(stored));
+          loadProjectsFromLocalStorage();
       } finally {
           setIsLoadingData(false);
       }
@@ -158,7 +173,7 @@ const App: React.FC = () => {
         projectToSave = { 
             ...(existing || {}), // keep existing props
             id: currentId,
-            userId: user?.uid, // Ensure ownership
+            userId: user?.uid || 'guest',
             lastModified: now,
             inputs,
             summary 
@@ -170,7 +185,7 @@ const App: React.FC = () => {
         const newId = crypto.randomUUID();
         projectToSave = {
             id: newId,
-            userId: user?.uid,
+            userId: user?.uid || 'guest',
             lastModified: now,
             inputs,
             summary
@@ -180,13 +195,13 @@ const App: React.FC = () => {
     }
 
     // Persist
-    // 1. Local (Optimistic UI)
+    // 1. Local (Optimistic UI & Guest Mode)
     const currentProjects = currentId 
         ? savedProjects.map(p => p.id === currentId ? projectToSave : p)
         : [projectToSave, ...savedProjects];
     localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(currentProjects));
     
-    // 2. Cloud
+    // 2. Cloud (Only if logged in)
     if (user) {
         await saveProjectToCloud(projectToSave);
     }
@@ -364,7 +379,7 @@ const App: React.FC = () => {
     }
   };
 
-  // --- EDITOR VIEW (Full Screen Overlay Logic) ---
+  // --- EDITOR VIEW ---
   const renderEditor = () => (
       <div className="flex flex-col h-full bg-slate-50">
         {/* Editor Header */}
@@ -432,7 +447,7 @@ const App: React.FC = () => {
             </div>
         </header>
 
-        {/* Editor Content (Scrollable) */}
+        {/* Editor Content */}
         <div className="flex-1 overflow-auto">
              <div id="report-content" className="w-full bg-white min-h-full">
                 <main className="max-w-6xl mx-auto px-4 py-8 w-full">
@@ -448,7 +463,11 @@ const App: React.FC = () => {
                             <div className="text-right">
                                 <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Report Date</div>
                                 <div className="text-sm font-medium text-slate-600">{new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                                {user && <div className="text-xs text-slate-400 mt-1">Prepared by {user.displayName}</div>}
+                                {(user || isGuest) && (
+                                    <div className="text-xs text-slate-400 mt-1">
+                                        Prepared by {user?.displayName || (isGuest ? 'Guest User' : '')}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -458,7 +477,7 @@ const App: React.FC = () => {
                         <p className="text-slate-500 text-sm uppercase tracking-widest font-medium">Financial Analysis & Forecasting</p>
                     </div>
 
-                    {/* Interactive Input Section (Hidden in PDF via onclone) */}
+                    {/* Interactive Input Section */}
                     <div id="input-section">
                         <InputSection 
                             inputs={inputs} 
@@ -467,7 +486,7 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* Read-Only Input Summary (Visible only in PDF via onclone) */}
+                    {/* Read-Only Input Summary */}
                     <PrintableInputSummary inputs={inputs} />
 
                     {/* Summary Cards */}
@@ -479,7 +498,7 @@ const App: React.FC = () => {
                         />
                     </div>
 
-                    {/* Financial Overview (ROI/Valuation) */}
+                    {/* Financial Overview */}
                     <FinancialOverview metrics={metrics} inputs={inputs} />
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

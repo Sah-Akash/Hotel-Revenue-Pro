@@ -1,9 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Building2, CheckCircle2, TrendingUp, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Building2, CheckCircle2, TrendingUp, ShieldCheck, ArrowRight, AlertCircle, User } from 'lucide-react';
 
 const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, continueAsGuest } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+      setError(null);
+      try {
+          await login();
+      } catch (err: any) {
+          if (err.code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.' || err.message?.includes('api-key-not-valid')) {
+              setError("Missing Firebase Configuration. Please open 'firebase.ts' and add your API Key, or use Guest Mode.");
+          } else if (err.code === 'auth/popup-closed-by-user') {
+              setError("Sign-in cancelled.");
+          } else {
+              setError(err.message || "Failed to sign in. Check console for details.");
+          }
+      }
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center relative overflow-hidden">
@@ -57,9 +73,16 @@ const Login: React.FC = () => {
                         <p className="text-slate-400 text-sm">Sign in to access your saved portfolio</p>
                     </div>
 
+                    {error && (
+                        <div className="mb-6 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3">
+                            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                            <p className="text-sm text-red-200 text-left">{error}</p>
+                        </div>
+                    )}
+
                     <button 
-                        onClick={login}
-                        className="w-full bg-white hover:bg-slate-50 text-slate-900 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-lg mb-6 group"
+                        onClick={handleLogin}
+                        className="w-full bg-white hover:bg-slate-50 text-slate-900 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-lg mb-4 group"
                     >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                             <path
@@ -83,11 +106,16 @@ const Login: React.FC = () => {
                         <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity -ml-2 group-hover:ml-0" />
                     </button>
 
-                    <div className="text-center">
-                        <p className="text-xs text-slate-500 mb-4">
-                            By continuing, you agree to our Terms of Service and Privacy Policy.
-                        </p>
-                        <div className="flex items-center justify-center gap-2 text-slate-400 text-xs">
+                    <button 
+                        onClick={continueAsGuest}
+                        className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-3 px-6 rounded-xl flex items-center justify-center gap-3 transition-colors border border-slate-700 hover:border-slate-600"
+                    >
+                        <User className="w-4 h-4" />
+                        <span>Continue as Guest</span>
+                    </button>
+
+                    <div className="mt-6 text-center">
+                        <div className="flex items-center justify-center gap-2 text-slate-500 text-xs">
                             <ShieldCheck className="w-3 h-3 text-emerald-500" />
                             <span>Bank-level security for your data</span>
                         </div>
