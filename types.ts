@@ -18,9 +18,18 @@ export interface CalculationMetrics {
   dailyExtra: number;
   monthlyExtra: number;
   yearlyExtra: number;
-  dailyNet: number;
+  dailyNet: number; // This is effectively NOI
   monthlyNet: number;
   yearlyNet: number;
+  // Financials
+  monthlyEMI: number;
+  yearlyEMI: number;
+  monthlyCashFlow: number;
+  yearlyCashFlow: number;
+  dscr: number; // Debt Service Coverage Ratio
+  roi: number; // Cash on Cash Return
+  valuation: number; // Estimated Property Valuation
+  paybackPeriod: number; // Years
 }
 
 export interface InputState {
@@ -31,4 +40,10 @@ export interface InputState {
   roundSRN: boolean;
   extraDeductions: ExtraDeduction[];
   maintenanceCostPerRoom: number;
+  // Financials
+  includeFinancials: boolean;
+  propertyValue: number;
+  loanAmount: number;
+  interestRate: number;
+  loanTermYears: number;
 }

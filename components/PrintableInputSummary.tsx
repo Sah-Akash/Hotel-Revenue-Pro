@@ -40,6 +40,28 @@ const PrintableInputSummary: React.FC<Props> = ({ inputs }) => {
                 </div>
             </div>
 
+            {/* Financial Summary Row for Print */}
+            {inputs.includeFinancials && (
+                <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100 bg-slate-50/30">
+                     <div className="p-5">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Project Cost</div>
+                        <div className="text-lg font-bold text-indigo-900">{formatCurrency(inputs.propertyValue)}</div>
+                    </div>
+                    <div className="p-5">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Loan Amount</div>
+                        <div className="text-lg font-bold text-indigo-900">{formatCurrency(inputs.loanAmount)}</div>
+                    </div>
+                    <div className="p-5">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Interest Rate</div>
+                        <div className="text-lg font-bold text-indigo-900">{inputs.interestRate}%</div>
+                    </div>
+                     <div className="p-5">
+                        <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Loan Tenure</div>
+                        <div className="text-lg font-bold text-indigo-900">{inputs.loanTermYears} Years</div>
+                    </div>
+                </div>
+            )}
+
             {inputs.extraDeductions.length > 0 && (
                 <div className="p-5 bg-slate-50/50">
                     <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-3">Additional Monthly Fixed Costs</div>

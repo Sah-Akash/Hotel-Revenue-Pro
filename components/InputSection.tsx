@@ -1,7 +1,7 @@
 import React from 'react';
 import { InputState, ExtraDeduction } from '../types';
-import { OCCUPANCY_PRESETS, ROOM_PRESETS, PRICE_PRESETS } from '../constants';
-import { Users, BedDouble, IndianRupee, MinusCircle, Plus, Trash2, Wrench } from 'lucide-react';
+import { OCCUPANCY_PRESETS, ROOM_PRESETS, PRICE_PRESETS, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from '../constants';
+import { Users, BedDouble, IndianRupee, MinusCircle, Plus, Trash2, Wrench, Coins, Landmark, CalendarClock } from 'lucide-react';
 import { formatCurrency } from '../utils';
 
 interface Props {
@@ -51,6 +51,20 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
       })
     });
   };
+
+  const toggleFinancials = () => {
+      const newState = !inputs.includeFinancials;
+      const updates: Partial<InputState> = { includeFinancials: newState };
+      
+      // Initialize defaults if enabling for the first time
+      if (newState && !inputs.propertyValue) {
+          updates.propertyValue = DEFAULT_PROPERTY_VALUE;
+          updates.loanAmount = DEFAULT_PROPERTY_VALUE * 0.7; // 70% LTV
+          updates.interestRate = DEFAULT_LOAN_INTEREST;
+          updates.loanTermYears = DEFAULT_LOAN_TERM;
+      }
+      onChange({ ...inputs, ...updates });
+  }
 
   return (
     <div className="mb-8 print:hidden">
@@ -262,6 +276,101 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
           </div>
         </div>
       </div>
+
+      {/* Financial Section Toggle */}
+      <div className="mb-6">
+        <button 
+            onClick={toggleFinancials}
+            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+                inputs.includeFinancials 
+                ? 'bg-indigo-50 border-indigo-200 shadow-sm' 
+                : 'bg-white border-slate-200 hover:bg-slate-50'
+            }`}
+        >
+            <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${inputs.includeFinancials ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                    <Landmark className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                    <div className={`font-bold ${inputs.includeFinancials ? 'text-indigo-900' : 'text-slate-700'}`}>Investment & Financing Analysis</div>
+                    <div className="text-xs text-slate-500">Calculate EMI, ROI, Valuation and Cash Flow</div>
+                </div>
+            </div>
+            <div className={`text-sm font-medium ${inputs.includeFinancials ? 'text-indigo-700' : 'text-slate-400'}`}>
+                {inputs.includeFinancials ? 'Enabled' : 'Enable'}
+            </div>
+        </button>
+      </div>
+
+      {/* Financial Inputs - Conditionally Rendered */}
+      {inputs.includeFinancials && (
+         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 animate-in slide-in-from-top-4 duration-300">
+             
+             {/* Total Property Value */}
+             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
+                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Total Project Cost / Value</label>
+                <div className="relative">
+                    <IndianRupee className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
+                    <input
+                        type="number"
+                        value={inputs.propertyValue}
+                        onChange={(e) => handleChange('propertyValue', Number(e.target.value))}
+                        onFocus={handleFocus}
+                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-5 pb-1 outline-none"
+                    />
+                </div>
+             </div>
+
+             {/* Loan Amount */}
+             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
+                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Loan Amount</label>
+                <div className="relative">
+                    <IndianRupee className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
+                    <input
+                        type="number"
+                        value={inputs.loanAmount}
+                        onChange={(e) => handleChange('loanAmount', Number(e.target.value))}
+                        onFocus={handleFocus}
+                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-5 pb-1 outline-none"
+                    />
+                </div>
+                <div className="mt-2 text-[10px] text-indigo-400 font-medium">
+                    LTV: {inputs.propertyValue > 0 ? Math.round((inputs.loanAmount / inputs.propertyValue) * 100) : 0}%
+                </div>
+             </div>
+
+             {/* Interest Rate */}
+             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
+                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Interest Rate (%)</label>
+                <div className="relative">
+                    <Coins className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
+                    <input
+                        type="number"
+                        step="0.1"
+                        value={inputs.interestRate}
+                        onChange={(e) => handleChange('interestRate', Number(e.target.value))}
+                        onFocus={handleFocus}
+                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-6 pb-1 outline-none"
+                    />
+                </div>
+             </div>
+
+             {/* Tenure */}
+             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
+                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Loan Tenure (Years)</label>
+                <div className="relative">
+                    <CalendarClock className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
+                    <input
+                        type="number"
+                        value={inputs.loanTermYears}
+                        onChange={(e) => handleChange('loanTermYears', Number(e.target.value))}
+                        onFocus={handleFocus}
+                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-6 pb-1 outline-none"
+                    />
+                </div>
+             </div>
+         </div>
+      )}
 
       {/* Extra Deduction Section */}
       {!isOwnerView && (

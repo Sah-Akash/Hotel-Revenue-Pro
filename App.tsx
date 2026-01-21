@@ -4,10 +4,11 @@ import { useCalculator } from './hooks/useCalculator';
 import InputSection from './components/InputSection';
 import PrintableInputSummary from './components/PrintableInputSummary';
 import SummaryCards from './components/SummaryCards';
+import FinancialOverview from './components/FinancialOverview';
 import RevenueTable from './components/RevenueTable';
 import Visuals from './components/Visuals';
 import { Building2, Printer, Eye, EyeOff, Loader2, Download } from 'lucide-react';
-import { MAINTENANCE_BASE_COST } from './constants';
+import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from './constants';
 import { formatCurrency } from './utils';
 
 const App: React.FC = () => {
@@ -19,6 +20,12 @@ const App: React.FC = () => {
     roundSRN: true,
     extraDeductions: [],
     maintenanceCostPerRoom: MAINTENANCE_BASE_COST,
+    // Financial defaults
+    includeFinancials: false,
+    propertyValue: 0,
+    loanAmount: 0,
+    interestRate: 0,
+    loanTermYears: 0,
   });
 
   const [isOwnerView, setIsOwnerView] = useState(false);
@@ -174,6 +181,9 @@ const App: React.FC = () => {
                 />
             </div>
 
+            {/* NEW: Financial Overview (ROI/Valuation) */}
+            <FinancialOverview metrics={metrics} inputs={inputs} />
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 order-2 lg:order-1">
                     <div className="break-inside-avoid mb-6">
@@ -187,6 +197,12 @@ const App: React.FC = () => {
                             <li><strong>OTA Commission:</strong> Calculated at 18% of Gross Revenue to account for booking platform fees.</li>
                             <li><strong>Operational Maintenance:</strong> Derived based on occupancy ({inputs.occupancyPercent}%) and a base cost of ₹{inputs.maintenanceCostPerRoom} per sold room.</li>
                             <li><strong>Annual Projection:</strong> Extrapolated based on 365 operational days. Seasonality adjustments are not applied in this linear model.</li>
+                            {inputs.includeFinancials && (
+                                <>
+                                    <li><strong>Valuation:</strong> Estimated using a Capitalization Rate of 10% on Net Operating Income.</li>
+                                    <li><strong>ROI:</strong> Calculated as Cash-on-Cash return (Annual Net Cash Flow / Initial Equity Investment).</li>
+                                </>
+                            )}
                             {inputs.extraDeductions.length > 0 && (
                             <li><strong>Fixed Costs:</strong> Includes additional monthly expenses totaling {formatCurrency(inputs.extraDeductions.reduce((a,b)=>a+b.amount,0))}.</li>
                             )}
