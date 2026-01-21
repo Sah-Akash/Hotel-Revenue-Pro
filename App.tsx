@@ -7,7 +7,7 @@ import SummaryCards from './components/SummaryCards';
 import FinancialOverview from './components/FinancialOverview';
 import RevenueTable from './components/RevenueTable';
 import Visuals from './components/Visuals';
-import { Building2, Printer, Eye, EyeOff, Loader2, Download } from 'lucide-react';
+import { Building2, Printer, Eye, EyeOff, Loader2, Download, FileSpreadsheet } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from './constants';
 import { formatCurrency } from './utils';
 
@@ -32,6 +32,88 @@ const App: React.FC = () => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const metrics = useCalculator(inputs);
+
+  const handleDownloadCsv = () => {
+    // 1. Construct the Data Rows
+    const csvRows = [
+      ['Property Name', `"${inputs.hotelName || 'Untitled Property'}"`],
+      ['Report Date', new Date().toLocaleDateString()],
+      [],
+      ['--- CONFIGURATION ---'],
+      ['Total Rooms', inputs.totalRooms],
+      ['Occupancy (%)', inputs.occupancyPercent],
+      ['Avg Room Price', inputs.roomPrice],
+      ['Maintenance Cost/Room', inputs.maintenanceCostPerRoom],
+    ];
+
+    if (inputs.includeFinancials) {
+        csvRows.push(
+            [],
+            ['--- INVESTMENT & FINANCING ---'],
+            ['Property Value', inputs.propertyValue],
+            ['Loan Amount', inputs.loanAmount],
+            ['Interest Rate (%)', inputs.interestRate],
+            ['Loan Tenure (Years)', inputs.loanTermYears]
+        );
+    }
+
+    csvRows.push(
+        [],
+        ['--- KEY METRICS ---'],
+        ['Sold Rooms/Night (SRN)', metrics.srn.toFixed(1)],
+        ['Monthly Net Income', metrics.monthlyNet.toFixed(2)],
+        ['Yearly Net Income', metrics.yearlyNet.toFixed(2)]
+    );
+
+    if (inputs.includeFinancials) {
+        csvRows.push(
+            ['ROI (%)', metrics.roi.toFixed(1)],
+            ['DSCR', metrics.dscr.toFixed(2)],
+            ['Valuation', metrics.valuation.toFixed(2)],
+            ['Payback Period (Years)', metrics.paybackPeriod.toFixed(1)]
+        );
+    }
+
+    csvRows.push(
+        [],
+        ['--- REVENUE BREAKDOWN ---'],
+        ['Item', 'Daily', 'Monthly', 'Yearly']
+    );
+
+    const addRow = (label: string, daily: number, monthly: number, yearly: number) => {
+        csvRows.push([`"${label}"`, daily.toFixed(2), monthly.toFixed(2), yearly.toFixed(2)]);
+    };
+
+    addRow('Gross Revenue', metrics.dailyRevenue, metrics.monthlyRevenue, metrics.yearlyRevenue);
+    addRow('OTA Commission (18%)', -metrics.dailyOta, -metrics.monthlyOta, -metrics.yearlyOta);
+    addRow('Maintenance Cost', -metrics.dailyMaintenance, -metrics.monthlyMaintenance, -metrics.yearlyMaintenance);
+
+    inputs.extraDeductions.forEach(d => {
+        const m = d.amount || 0;
+        addRow(d.name || 'Extra Expense', -(m/30), -m, -(m*12));
+    });
+
+    addRow('Net Operating Income (NOI)', metrics.dailyNet, metrics.monthlyNet, metrics.yearlyNet);
+
+    if (inputs.includeFinancials) {
+        addRow('Debt Service (EMI)', -(metrics.monthlyEMI/30), -metrics.monthlyEMI, -metrics.yearlyEMI);
+        addRow('Net Cash Flow', metrics.monthlyCashFlow/30, metrics.monthlyCashFlow, metrics.yearlyCashFlow);
+    }
+
+    // 2. Convert to CSV string
+    const csvContent = "data:text/csv;charset=utf-8," 
+        + csvRows.map(e => e.join(",")).join("\n");
+    
+    // 3. Trigger Download
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const fileName = inputs.hotelName ? `${inputs.hotelName.replace(/\s+/g, '_')}_Revenue_Data.csv` : 'Hotel_Revenue_Data.csv';
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleDownloadPdf = async () => {
     const element = document.getElementById('report-content');
@@ -115,7 +197,7 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setIsOwnerView(!isOwnerView)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
@@ -123,13 +205,23 @@ const App: React.FC = () => {
               {isOwnerView ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               <span className="hidden sm:inline">{isOwnerView ? 'Detailed View' : 'Owner Pitch View'}</span>
             </button>
+            
+            <button
+              onClick={handleDownloadCsv}
+              className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-medium hover:bg-emerald-100 transition-colors"
+              title="Export CSV Data"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span className="hidden sm:inline">CSV</span>
+            </button>
+
             <button
               onClick={handleDownloadPdf}
               disabled={isGeneratingPdf}
               className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isGeneratingPdf ? 'Generating...' : 'Download PDF'}</span>
+              <span className="hidden sm:inline">{isGeneratingPdf ? 'Generating...' : 'PDF'}</span>
             </button>
           </div>
         </div>
