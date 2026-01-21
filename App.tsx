@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { InputState, SavedProject, MetricSummary } from './types';
+import { InputState, SavedProject, MetricSummary, ViewType, AppSettings } from './types';
 import { useCalculator } from './hooks/useCalculator';
 import InputSection from './components/InputSection';
 import PrintableInputSummary from './components/PrintableInputSummary';
@@ -8,9 +8,11 @@ import FinancialOverview from './components/FinancialOverview';
 import RevenueTable from './components/RevenueTable';
 import Visuals from './components/Visuals';
 import Dashboard from './components/Dashboard';
-import { Building2, Eye, EyeOff, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle } from 'lucide-react';
+import Sidebar from './components/Sidebar';
+import Analytics from './components/Analytics';
+import Settings from './components/Settings';
+import { Building2, Eye, EyeOff, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from './constants';
-import { formatCurrency } from './utils';
 
 // Default initial state
 const INITIAL_INPUTS: InputState = {
@@ -28,10 +30,18 @@ const INITIAL_INPUTS: InputState = {
   loanTermYears: 0,
 };
 
+const DEFAULT_SETTINGS: AppSettings = {
+    userName: '',
+    currencySymbol: '₹',
+    defaultInterestRate: DEFAULT_LOAN_INTEREST
+};
+
 const App: React.FC = () => {
   // --- STATE ---
-  const [view, setView] = useState<'dashboard' | 'editor'>('dashboard');
+  const [view, setView] = useState<ViewType>('dashboard');
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Editor State
   const [currentId, setCurrentId] = useState<string | null>(null); // To track if we are editing an existing one
@@ -48,17 +58,33 @@ const App: React.FC = () => {
   
   // Load from local storage on mount
   useEffect(() => {
-    const stored = localStorage.getItem('hotel_revenue_pro_projects');
-    if (stored) {
+    // Load Projects
+    const storedProjects = localStorage.getItem('hotel_revenue_pro_projects');
+    if (storedProjects) {
       try {
-        setSavedProjects(JSON.parse(stored));
+        setSavedProjects(JSON.parse(storedProjects));
       } catch (e) {
         console.error("Failed to load projects", e);
       }
     }
+
+    // Load Settings
+    const storedSettings = localStorage.getItem('hotel_revenue_pro_settings');
+    if (storedSettings) {
+        try {
+            setAppSettings(JSON.parse(storedSettings));
+        } catch (e) {
+            console.error("Failed to load settings", e);
+        }
+    }
   }, []);
 
   // --- HANDLERS ---
+
+  const handleSaveSettings = (newSettings: AppSettings) => {
+      setAppSettings(newSettings);
+      localStorage.setItem('hotel_revenue_pro_settings', JSON.stringify(newSettings));
+  };
 
   const handleSaveProject = () => {
     const summary: MetricSummary = {
@@ -95,12 +121,14 @@ const App: React.FC = () => {
     localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(updatedProjects));
     setLastSavedTime(now);
 
-    // Clear "Saved" message after 2 seconds
     setTimeout(() => setLastSavedTime(null), 2000);
   };
 
   const handleCreateNew = () => {
-    setInputs(INITIAL_INPUTS);
+    setInputs({
+        ...INITIAL_INPUTS,
+        interestRate: appSettings.defaultInterestRate || INITIAL_INPUTS.interestRate
+    });
     setCurrentId(null);
     setView('editor');
     setIsOwnerView(false);
@@ -120,10 +148,6 @@ const App: React.FC = () => {
         setSavedProjects(updated);
         localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(updated));
     }
-  };
-
-  const handleBackToDashboard = () => {
-    setView('dashboard');
   };
 
   const handleDownloadCsv = () => {
@@ -193,11 +217,7 @@ const App: React.FC = () => {
         addRow('Net Cash Flow', metrics.monthlyCashFlow/30, metrics.monthlyCashFlow, metrics.yearlyCashFlow);
     }
 
-    // 2. Convert to CSV string
-    const csvContent = "data:text/csv;charset=utf-8," 
-        + csvRows.map(e => e.join(",")).join("\n");
-    
-    // 3. Trigger Download
+    const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -269,174 +289,237 @@ const App: React.FC = () => {
     }
   };
 
-  // --- VIEW RENDERING ---
+  // --- EDITOR VIEW (Full Screen Overlay Logic) ---
+  const renderEditor = () => (
+      <div className="flex flex-col h-full bg-slate-50">
+        {/* Editor Header */}
+        <header className="bg-white border-b border-slate-100 sticky top-0 z-30 print:static print:border-none no-print">
+            <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => setView('dashboard')}
+                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                        title="Back to Dashboard"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
+                    <div className="flex items-center gap-3">
+                        <div className="bg-blue-600 p-2 rounded-lg hidden sm:block">
+                            <Building2 className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-slate-800 text-sm sm:text-lg leading-tight truncate max-w-[150px] sm:max-w-xs">
+                                {inputs.hotelName || 'Untitled Project'}
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+            
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleSaveProject}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                            lastSavedTime 
+                            ? 'bg-green-50 text-green-700 border border-green-200' 
+                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        }`}
+                    >
+                        {lastSavedTime ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{lastSavedTime ? 'Saved' : 'Save'}</span>
+                    </button>
 
-  if (view === 'dashboard') {
-      return (
-          <Dashboard 
-            projects={savedProjects}
-            onCreateNew={handleCreateNew}
-            onOpen={handleOpenProject}
-            onDelete={handleDeleteProject}
-          />
-      );
-  }
+                    <button
+                        onClick={() => setIsOwnerView(!isOwnerView)}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                        title={isOwnerView ? "Switch to Detailed View" : "Switch to Owner View"}
+                    >
+                        {isOwnerView ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                    
+                    <button
+                        onClick={handleDownloadCsv}
+                        className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-medium hover:bg-emerald-100 transition-colors"
+                        title="Export CSV"
+                    >
+                        <FileSpreadsheet className="w-4 h-4" />
+                    </button>
+
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={isGeneratingPdf}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{isGeneratingPdf ? 'Wait...' : 'PDF'}</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        {/* Editor Content (Scrollable) */}
+        <div className="flex-1 overflow-auto">
+             <div id="report-content" className="w-full bg-white min-h-full">
+                <main className="max-w-6xl mx-auto px-4 py-8 w-full">
+                    {/* Printable Report Header */}
+                    <div id="report-title" className="mb-8 text-center border-b border-slate-200 pb-6">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-2 opacity-0 print:opacity-100" style={{ opacity: isGeneratingPdf ? 1 : undefined }}>
+                                <div className="bg-blue-600 p-1.5 rounded">
+                                    <Building2 className="w-4 h-4 text-white" />
+                                </div>
+                                <span className="font-bold text-slate-700 tracking-tight">RevenuePro</span>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Report Date</div>
+                                <div className="text-sm font-medium text-slate-600">{new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                                {appSettings.userName && <div className="text-xs text-slate-400 mt-1">Prepared by {appSettings.userName}</div>}
+                            </div>
+                        </div>
+
+                        <h1 className="text-4xl font-bold text-slate-900 mb-2">
+                            {inputs.hotelName || 'Property Revenue Projection'}
+                        </h1>
+                        <p className="text-slate-500 text-sm uppercase tracking-widest font-medium">Financial Analysis & Forecasting</p>
+                    </div>
+
+                    {/* Interactive Input Section (Hidden in PDF via onclone) */}
+                    <div id="input-section">
+                        <InputSection 
+                            inputs={inputs} 
+                            onChange={setInputs} 
+                            isOwnerView={isOwnerView}
+                        />
+                    </div>
+
+                    {/* Read-Only Input Summary (Visible only in PDF via onclone) */}
+                    <PrintableInputSummary inputs={inputs} />
+
+                    {/* Summary Cards */}
+                    <div className="break-inside-avoid mb-8">
+                        <SummaryCards 
+                            metrics={metrics} 
+                            occupancyPercent={inputs.occupancyPercent}
+                            roomPrice={inputs.roomPrice}
+                        />
+                    </div>
+
+                    {/* Financial Overview (ROI/Valuation) */}
+                    <FinancialOverview metrics={metrics} inputs={inputs} />
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 order-2 lg:order-1">
+                            <div className="break-inside-avoid mb-6">
+                                <RevenueTable metrics={metrics} isOwnerView={isOwnerView} extraDeductions={inputs.extraDeductions} />
+                            </div>
+                            
+                            {/* Disclaimer / Notes */}
+                            <div className="break-inside-avoid mt-6 p-6 bg-slate-50 rounded-xl text-xs text-slate-500 leading-relaxed border border-slate-100">
+                                <p className="font-bold text-slate-700 mb-2 uppercase tracking-wide text-[10px]">Methodology & Assumptions</p>
+                                <ul className="list-disc pl-4 space-y-1.5 marker:text-slate-300">
+                                    <li><strong>OTA Commission:</strong> Calculated at 18% of Gross Revenue to account for booking platform fees.</li>
+                                    <li><strong>Operational Maintenance:</strong> Derived based on occupancy ({inputs.occupancyPercent}%) and a base cost of ₹{inputs.maintenanceCostPerRoom} per sold room.</li>
+                                    <li><strong>Annual Projection:</strong> Extrapolated based on 365 operational days. Seasonality adjustments are not applied in this linear model.</li>
+                                    {inputs.includeFinancials && (
+                                        <>
+                                            <li><strong>Valuation:</strong> Estimated using a Capitalization Rate of 10% on Net Operating Income.</li>
+                                            <li><strong>ROI:</strong> Calculated as Cash-on-Cash return (Annual Net Cash Flow / Initial Equity Investment).</li>
+                                        </>
+                                    )}
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div className="lg:col-span-1 order-1 lg:order-2">
+                            <div className="break-inside-avoid">
+                                <Visuals metrics={metrics} inputs={inputs} />
+                            </div>
+                        </div>
+                    </div>
+                </main>
+                <footer className="max-w-6xl mx-auto px-4 py-6 text-center text-slate-300 text-[10px] border-t border-slate-50 w-full mt-auto print:block hidden uppercase tracking-widest">
+                    <p>Generated by RevenuePro • Confidential Financial Document</p>
+                </footer>
+             </div>
+        </div>
+      </div>
+  );
+
+  // --- MAIN LAYOUT RENDERING ---
 
   return (
-    <div className="min-h-screen bg-slate-50/50 pb-20 flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-100 sticky top-0 z-10 print:static print:border-none no-print">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-             <button 
-                onClick={handleBackToDashboard}
-                className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
-                title="Back to Dashboard"
-             >
-                 <ArrowLeft className="w-5 h-5" />
-             </button>
-             <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
-             <div className="flex items-center gap-3">
-                <div className="bg-blue-600 p-2 rounded-lg hidden sm:block">
-                    <Building2 className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                    <h1 className="font-bold text-slate-800 text-sm sm:text-lg leading-tight truncate max-w-[150px] sm:max-w-xs">
-                        {inputs.hotelName || 'Untitled Project'}
-                    </h1>
-                </div>
-             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <button
-                onClick={handleSaveProject}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                    lastSavedTime 
-                    ? 'bg-green-50 text-green-700 border border-green-200' 
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                }`}
-            >
-                {lastSavedTime ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                <span className="hidden sm:inline">{lastSavedTime ? 'Saved' : 'Save'}</span>
-            </button>
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+        
+        {/* Sidebar Navigation - Always present unless in print mode (handled by CSS) or potentially hidden in Editor if desired, but good for navigation */}
+        <Sidebar 
+            currentView={view} 
+            onChangeView={setView}
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(false)}
+        />
 
-            <button
-              onClick={() => setIsOwnerView(!isOwnerView)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-              title={isOwnerView ? "Switch to Detailed View" : "Switch to Owner View"}
-            >
-              {isOwnerView ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
             
-            <button
-              onClick={handleDownloadCsv}
-              className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-medium hover:bg-emerald-100 transition-colors"
-              title="Export CSV"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={handleDownloadPdf}
-              disabled={isGeneratingPdf}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isGeneratingPdf ? 'Wait...' : 'PDF'}</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Report Content Container - This is what gets printed/downloaded */}
-      <div id="report-content" className="flex-grow w-full flex flex-col bg-white">
-        <main className="max-w-6xl mx-auto px-4 py-8 w-full flex-grow">
-            
-            {/* Printable Report Header */}
-            <div id="report-title" className="mb-8 text-center border-b border-slate-200 pb-6">
-                <div className="flex justify-between items-start mb-4">
-                     <div className="flex items-center gap-2 opacity-0 print:opacity-100" style={{ opacity: isGeneratingPdf ? 1 : undefined }}>
-                        <div className="bg-blue-600 p-1.5 rounded">
-                            <Building2 className="w-4 h-4 text-white" />
-                        </div>
-                        <span className="font-bold text-slate-700 tracking-tight">HotelRevenuePro</span>
-                     </div>
-                     <div className="text-right">
-                        <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Report Date</div>
-                        <div className="text-sm font-medium text-slate-600">{new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                     </div>
+            {/* Mobile Header Toggle */}
+            <div className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 shrink-0">
+                <div className="flex items-center gap-2 font-bold text-slate-800">
+                    <Building2 className="w-5 h-5 text-blue-600" />
+                    RevenuePro
                 </div>
-
-                <h1 className="text-4xl font-bold text-slate-900 mb-2">
-                    {inputs.hotelName || 'Property Revenue Projection'}
-                </h1>
-                <p className="text-slate-500 text-sm uppercase tracking-widest font-medium">Financial Analysis & Forecasting</p>
+                <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600">
+                    <Menu className="w-6 h-6" />
+                </button>
             </div>
 
-            {/* Interactive Input Section (Hidden in PDF via onclone) */}
-            <div id="input-section">
-                <InputSection 
-                    inputs={inputs} 
-                    onChange={setInputs} 
-                    isOwnerView={isOwnerView}
-                />
-            </div>
-
-            {/* Read-Only Input Summary (Visible only in PDF via onclone) */}
-            <PrintableInputSummary inputs={inputs} />
-
-            {/* Summary Cards */}
-            <div className="break-inside-avoid mb-8">
-                <SummaryCards 
-                    metrics={metrics} 
-                    occupancyPercent={inputs.occupancyPercent}
-                    roomPrice={inputs.roomPrice}
-                />
-            </div>
-
-            {/* Financial Overview (ROI/Valuation) */}
-            <FinancialOverview metrics={metrics} inputs={inputs} />
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 order-2 lg:order-1">
-                    <div className="break-inside-avoid mb-6">
-                        <RevenueTable metrics={metrics} isOwnerView={isOwnerView} extraDeductions={inputs.extraDeductions} />
-                    </div>
-                    
-                    {/* Disclaimer / Notes */}
-                    <div className="break-inside-avoid mt-6 p-6 bg-slate-50 rounded-xl text-xs text-slate-500 leading-relaxed border border-slate-100">
-                        <p className="font-bold text-slate-700 mb-2 uppercase tracking-wide text-[10px]">Methodology & Assumptions</p>
-                        <ul className="list-disc pl-4 space-y-1.5 marker:text-slate-300">
-                            <li><strong>OTA Commission:</strong> Calculated at 18% of Gross Revenue to account for booking platform fees.</li>
-                            <li><strong>Operational Maintenance:</strong> Derived based on occupancy ({inputs.occupancyPercent}%) and a base cost of ₹{inputs.maintenanceCostPerRoom} per sold room.</li>
-                            <li><strong>Annual Projection:</strong> Extrapolated based on 365 operational days. Seasonality adjustments are not applied in this linear model.</li>
-                            {inputs.includeFinancials && (
-                                <>
-                                    <li><strong>Valuation:</strong> Estimated using a Capitalization Rate of 10% on Net Operating Income.</li>
-                                    <li><strong>ROI:</strong> Calculated as Cash-on-Cash return (Annual Net Cash Flow / Initial Equity Investment).</li>
-                                </>
-                            )}
-                            {inputs.extraDeductions.length > 0 && (
-                            <li><strong>Fixed Costs:</strong> Includes additional monthly expenses totaling {formatCurrency(inputs.extraDeductions.reduce((a,b)=>a+b.amount,0))}.</li>
-                            )}
-                        </ul>
-                    </div>
-                </div>
+            {/* View Content */}
+            <div className="flex-1 overflow-auto">
+                {view === 'editor' && renderEditor()}
                 
-                <div className="lg:col-span-1 order-1 lg:order-2">
-                    <div className="break-inside-avoid">
-                        <Visuals metrics={metrics} inputs={inputs} />
+                {view === 'dashboard' && (
+                    <Dashboard 
+                        projects={savedProjects}
+                        onCreateNew={handleCreateNew}
+                        onOpen={handleOpenProject}
+                        onDelete={handleDeleteProject}
+                    />
+                )}
+
+                {view === 'analytics' && (
+                    <Analytics projects={savedProjects} />
+                )}
+
+                {view === 'settings' && (
+                    <Settings settings={appSettings} onSave={handleSaveSettings} />
+                )}
+
+                {view === 'help' && (
+                    <div className="p-12 max-w-3xl mx-auto text-slate-600">
+                        <h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1>
+                        <p className="mb-6">Welcome to Hotel Revenue Pro. This tool helps hotel owners and investors forecast revenue, calculate valuation, and analyze financial viability.</p>
+                        
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">Key Features:</h3>
+                        <ul className="list-disc pl-5 space-y-2 mb-8">
+                            <li><strong>Revenue Calculator:</strong> Estimate daily, monthly, and yearly income based on occupancy and room rates.</li>
+                            <li><strong>Financial Analysis:</strong> Calculate ROI, Debt Service Coverage Ratio (DSCR), and Property Valuation.</li>
+                            <li><strong>Portfolio Dashboard:</strong> Save and manage multiple property projections in one place.</li>
+                        </ul>
+                        
+                        <h3 className="text-lg font-bold text-slate-800 mb-2">Definitions:</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <span className="font-bold">NOI (Net Operating Income):</span>
+                                <p className="text-sm">Revenue minus all operating expenses. Excludes debt service and taxes.</p>
+                            </div>
+                            <div>
+                                <span className="font-bold">DSCR (Debt Service Coverage Ratio):</span>
+                                <p className="text-sm">NOI divided by Total Debt Service. A DSCR > 1.0 means the property generates enough income to pay its debts.</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
-
-        </main>
-
-        <footer className="max-w-6xl mx-auto px-4 py-6 text-center text-slate-300 text-[10px] border-t border-slate-50 w-full mt-auto print:block hidden uppercase tracking-widest">
-            <p>Generated by Hotel Revenue Pro • Confidential Financial Document</p>
-        </footer>
-      </div>
+        </div>
     </div>
   );
 };

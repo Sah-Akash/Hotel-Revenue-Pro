@@ -61,3 +61,11 @@ export interface SavedProject {
     inputs: InputState;
     summary: MetricSummary;
 }
+
+export interface AppSettings {
+    userName: string;
+    currencySymbol: string;
+    defaultInterestRate: number;
+}
+
+export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'settings' | 'help';
