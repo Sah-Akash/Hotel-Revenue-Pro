@@ -47,3 +47,17 @@ export interface InputState {
   interestRate: number;
   loanTermYears: number;
 }
+
+export interface MetricSummary {
+    monthlyRevenue: number;
+    monthlyNet: number;
+    roi: number;
+    valuation: number;
+}
+
+export interface SavedProject {
+    id: string;
+    lastModified: number;
+    inputs: InputState;
+    summary: MetricSummary;
+}

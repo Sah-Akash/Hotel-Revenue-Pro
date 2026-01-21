@@ -28,47 +28,48 @@ const Visuals: React.FC<Props> = ({ metrics, inputs }) => {
   // 1. Expense Breakdown Data (Donut Chart)
   const pieData = useMemo(() => {
     const data = [
-      { name: 'Net Income', value: metrics.monthlyNet, color: '#10b981' }, // Emerald-500
-      { name: 'OTA Comm.', value: metrics.monthlyOta, color: '#f43f5e' }, // Rose-500
-      { name: 'Maintenance', value: metrics.monthlyMaintenance, color: '#f59e0b' }, // Amber-500
-      { name: 'Fixed Costs', value: metrics.monthlyExtra, color: '#64748b' }, // Slate-500
+      { name: 'Net Profit', value: metrics.monthlyNet, color: '#10b981' }, // Emerald
+      { name: 'OTA Commission', value: metrics.monthlyOta, color: '#f43f5e' }, // Rose
+      { name: 'Maintenance', value: metrics.monthlyMaintenance, color: '#f59e0b' }, // Amber
+      { name: 'Extra Expenses', value: metrics.monthlyExtra, color: '#6366f1' }, // Indigo
     ];
+    // Filter out zero values
     return data.filter(d => d.value > 0);
   }, [metrics]);
 
-  // 2. Comparative Bar Chart Data (Monthly Only for cleanliness)
+  // 2. Comparative Bar Chart Data
   const barData = [
     {
       name: 'Monthly',
       Revenue: metrics.monthlyRevenue,
-      Net: metrics.monthlyNet,
+      NetIncome: metrics.monthlyNet,
     },
     {
       name: 'Yearly (Avg)',
-      Revenue: metrics.yearlyRevenue / 12, // Show monthly average representation of yearly to keep scale
-      Net: metrics.yearlyNet / 12,
+      Revenue: metrics.yearlyRevenue / 12,
+      NetIncome: metrics.yearlyNet / 12,
     }
   ];
 
-  // 3. Sensitivity Analysis Data (Occupancy 0% to 100%)
+  // 3. Sensitivity Analysis Data
   const sensitivityData = useMemo(() => {
     const data = [];
+    // Generate data points for occupancy from 0 to 100 in steps of 10
     for (let i = 0; i <= 100; i += 10) {
       const occupancyDecimal = i / 100;
       
-      // SRN logic matches hook
       let srn = inputs.totalRooms * occupancyDecimal;
       if (inputs.roundSRN) srn = Math.round(srn);
 
       const dailyRev = srn * inputs.roomPrice;
       const monthlyRev = dailyRev * 30;
-      
-      const monthlyOta = monthlyRev * 0.18;
-      
-      // Maintenance matches hook logic: Cost * Occ% * SRN
-      // dailyMaintenance = maintenanceCostPerRoom * occupancyDecimal * srn * 1;
-      const dailyMaint = inputs.maintenanceCostPerRoom * occupancyDecimal * srn;
-      const monthlyMaint = dailyMaint * 30;
+
+      // Calculate Expenses at this occupancy
+      const dailyOta = dailyRev * 0.18; // 18% OTA
+      const monthlyOta = dailyOta * 30;
+
+      const maintFactor = inputs.maintenanceCostPerRoom * occupancyDecimal * srn;
+      const monthlyMaint = maintFactor * 30;
 
       const monthlyExtra = inputs.extraDeductions.reduce((sum, item) => sum + (item.amount || 0), 0);
 
@@ -111,8 +112,8 @@ const Visuals: React.FC<Props> = ({ metrics, inputs }) => {
       {/* 1. Profit & Loss Distribution (Donut) */}
       <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center">
         <div className="w-full mb-2">
-            <h3 className="font-bold text-slate-800 text-sm">Monthly P&L Distribution</h3>
-            <p className="text-[10px] text-slate-400">Revenue Breakdown</p>
+            <h3 className="font-bold text-slate-800 text-sm">Monthly P&L Breakdown</h3>
+            <p className="text-[10px] text-slate-400">Where the money goes</p>
         </div>
         <div className="h-[220px] w-full relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -123,7 +124,7 @@ const Visuals: React.FC<Props> = ({ metrics, inputs }) => {
                         cy="50%"
                         innerRadius={50}
                         outerRadius={70}
-                        paddingAngle={4}
+                        paddingAngle={5}
                         dataKey="value"
                         isAnimationActive={false}
                     >
@@ -141,10 +142,9 @@ const Visuals: React.FC<Props> = ({ metrics, inputs }) => {
                     />
                 </PieChart>
             </ResponsiveContainer>
-             {/* Center Metric */}
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
                 <div className="text-center">
-                    <p className="text-[10px] text-slate-400 font-medium uppercase">Net</p>
+                    <p className="text-[10px] text-slate-400 font-medium uppercase">Margin</p>
                     <p className="text-lg font-bold text-emerald-600">
                         {metrics.monthlyRevenue > 0 ? Math.round((metrics.monthlyNet / metrics.monthlyRevenue) * 100) : 0}%
                     </p>
@@ -153,11 +153,11 @@ const Visuals: React.FC<Props> = ({ metrics, inputs }) => {
         </div>
       </div>
 
-      {/* 2. Gross vs Net (Bar) */}
+      {/* 2. Revenue vs Net Income (Bar) */}
       <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
         <div className="mb-4">
-            <h3 className="font-bold text-slate-800 text-sm">Performance Overview</h3>
-            <p className="text-[10px] text-slate-400">Monthly Revenue vs Net Income</p>
+            <h3 className="font-bold text-slate-800 text-sm">Revenue vs Net Income</h3>
+            <p className="text-[10px] text-slate-400">Monthly vs Yearly Average</p>
         </div>
         <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -182,8 +182,8 @@ const Visuals: React.FC<Props> = ({ metrics, inputs }) => {
               />
               <Tooltip content={<CustomTooltip />} cursor={{fill: '#f8fafc'}} />
               <Legend iconType="circle" wrapperStyle={{fontSize: '10px', paddingTop: '10px'}} />
-              <Bar name="Gross Rev" dataKey="Revenue" fill="#e2e8f0" radius={[4, 4, 0, 0]} barSize={24} isAnimationActive={false} />
-              <Bar name="Net Income" dataKey="Net" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={24} isAnimationActive={false} />
+              <Bar name="Gross Revenue" dataKey="Revenue" fill="#3b82f6" radius={[4, 4, 4, 4]} barSize={24} isAnimationActive={false} />
+              <Bar name="Net Income" dataKey="NetIncome" fill="#10b981" radius={[4, 4, 4, 4]} barSize={24} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>

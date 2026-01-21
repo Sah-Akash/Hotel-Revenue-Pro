@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { InputState } from './types';
+import React, { useState, useEffect } from 'react';
+import { InputState, SavedProject, MetricSummary } from './types';
 import { useCalculator } from './hooks/useCalculator';
 import InputSection from './components/InputSection';
 import PrintableInputSummary from './components/PrintableInputSummary';
@@ -7,31 +7,124 @@ import SummaryCards from './components/SummaryCards';
 import FinancialOverview from './components/FinancialOverview';
 import RevenueTable from './components/RevenueTable';
 import Visuals from './components/Visuals';
-import { Building2, Printer, Eye, EyeOff, Loader2, Download, FileSpreadsheet } from 'lucide-react';
+import Dashboard from './components/Dashboard';
+import { Building2, Eye, EyeOff, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from './constants';
 import { formatCurrency } from './utils';
 
-const App: React.FC = () => {
-  const [inputs, setInputs] = useState<InputState>({
-    hotelName: '',
-    totalRooms: 32,
-    occupancyPercent: 60,
-    roomPrice: 1200,
-    roundSRN: true,
-    extraDeductions: [],
-    maintenanceCostPerRoom: MAINTENANCE_BASE_COST,
-    // Financial defaults
-    includeFinancials: false,
-    propertyValue: 0,
-    loanAmount: 0,
-    interestRate: 0,
-    loanTermYears: 0,
-  });
+// Default initial state
+const INITIAL_INPUTS: InputState = {
+  hotelName: '',
+  totalRooms: 32,
+  occupancyPercent: 60,
+  roomPrice: 1200,
+  roundSRN: true,
+  extraDeductions: [],
+  maintenanceCostPerRoom: MAINTENANCE_BASE_COST,
+  includeFinancials: false,
+  propertyValue: 0,
+  loanAmount: 0,
+  interestRate: 0,
+  loanTermYears: 0,
+};
 
+const App: React.FC = () => {
+  // --- STATE ---
+  const [view, setView] = useState<'dashboard' | 'editor'>('dashboard');
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  
+  // Editor State
+  const [currentId, setCurrentId] = useState<string | null>(null); // To track if we are editing an existing one
+  const [inputs, setInputs] = useState<InputState>(INITIAL_INPUTS);
+  
   const [isOwnerView, setIsOwnerView] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [lastSavedTime, setLastSavedTime] = useState<number | null>(null);
 
+  // --- CALCULATOR HOOK ---
   const metrics = useCalculator(inputs);
+
+  // --- EFFECTS ---
+  
+  // Load from local storage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('hotel_revenue_pro_projects');
+    if (stored) {
+      try {
+        setSavedProjects(JSON.parse(stored));
+      } catch (e) {
+        console.error("Failed to load projects", e);
+      }
+    }
+  }, []);
+
+  // --- HANDLERS ---
+
+  const handleSaveProject = () => {
+    const summary: MetricSummary = {
+        monthlyRevenue: metrics.monthlyRevenue,
+        monthlyNet: metrics.monthlyNet,
+        roi: metrics.roi,
+        valuation: metrics.valuation
+    };
+
+    const now = Date.now();
+    let updatedProjects: SavedProject[];
+
+    if (currentId) {
+        // Update existing
+        updatedProjects = savedProjects.map(p => 
+            p.id === currentId 
+            ? { ...p, lastModified: now, inputs, summary } 
+            : p
+        );
+    } else {
+        // Create new
+        const newId = crypto.randomUUID();
+        const newProject: SavedProject = {
+            id: newId,
+            lastModified: now,
+            inputs,
+            summary
+        };
+        updatedProjects = [newProject, ...savedProjects];
+        setCurrentId(newId);
+    }
+
+    setSavedProjects(updatedProjects);
+    localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(updatedProjects));
+    setLastSavedTime(now);
+
+    // Clear "Saved" message after 2 seconds
+    setTimeout(() => setLastSavedTime(null), 2000);
+  };
+
+  const handleCreateNew = () => {
+    setInputs(INITIAL_INPUTS);
+    setCurrentId(null);
+    setView('editor');
+    setIsOwnerView(false);
+  };
+
+  const handleOpenProject = (project: SavedProject) => {
+    setInputs(project.inputs);
+    setCurrentId(project.id);
+    setView('editor');
+    setIsOwnerView(false);
+  };
+
+  const handleDeleteProject = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if(window.confirm("Are you sure you want to delete this project?")) {
+        const updated = savedProjects.filter(p => p.id !== id);
+        setSavedProjects(updated);
+        localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(updated));
+    }
+  };
+
+  const handleBackToDashboard = () => {
+    setView('dashboard');
+  };
 
   const handleDownloadCsv = () => {
     // 1. Construct the Data Rows
@@ -121,29 +214,25 @@ const App: React.FC = () => {
 
     setIsGeneratingPdf(true);
 
-    // Industry Grade PDF Configuration
     const opt = {
       margin: 0, 
       filename: inputs.hotelName ? `${inputs.hotelName.replace(/\s+/g, '_')}_Financial_Report.pdf` : 'Hotel_Revenue_Report.pdf',
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { 
-        scale: 2, // High resolution
+        scale: 2, 
         useCORS: true, 
         scrollY: 0,
-        windowWidth: 1200, // Fixed desktop width
+        windowWidth: 1200, 
         onclone: (clonedDoc: Document) => {
-            // 1. Hide interactive elements
             const hiddenElements = clonedDoc.querySelectorAll('.print\\:hidden, .no-print');
             hiddenElements.forEach((el: any) => el.style.display = 'none');
             
-            // 2. Hide interactive InputSection and Show Printable Summary
             const interactiveInputs = clonedDoc.getElementById('input-section');
             if (interactiveInputs) interactiveInputs.style.display = 'none';
 
             const printableSummary = clonedDoc.getElementById('printable-summary');
             if (printableSummary) printableSummary.style.display = 'block';
 
-            // 3. Configure the wrapper styling
             const reportContainer = clonedDoc.getElementById('report-content');
             if (reportContainer) {
               reportContainer.style.width = '1200px'; 
@@ -151,19 +240,17 @@ const App: React.FC = () => {
               reportContainer.style.backgroundColor = '#ffffff';
             }
 
-            // 4. Content styling
             const mainContent = clonedDoc.querySelector('main');
             if (mainContent) {
                 mainContent.style.maxWidth = '100%'; 
                 mainContent.style.padding = '40px 60px'; 
             }
             
-            // 5. Enhance Header for Print
             const reportTitle = clonedDoc.getElementById('report-title');
             if (reportTitle) {
                 reportTitle.style.marginBottom = '40px';
                 reportTitle.style.paddingBottom = '20px';
-                reportTitle.style.borderBottom = '2px solid #0f172a'; // Slate-900 strong underline
+                reportTitle.style.borderBottom = '2px solid #0f172a';
             }
         }
       },
@@ -182,37 +269,72 @@ const App: React.FC = () => {
     }
   };
 
+  // --- VIEW RENDERING ---
+
+  if (view === 'dashboard') {
+      return (
+          <Dashboard 
+            projects={savedProjects}
+            onCreateNew={handleCreateNew}
+            onOpen={handleOpenProject}
+            onDelete={handleDeleteProject}
+          />
+      );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-slate-100 sticky top-0 z-10 print:static print:border-none no-print">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-                <Building2 className="w-6 h-6 text-white" />
-            </div>
-            <div>
-                <h1 className="font-bold text-slate-800 text-lg leading-tight">Hotel Revenue Pro</h1>
-                <p className="text-[10px] text-slate-400 font-medium tracking-wide uppercase">Financial Calculator</p>
-            </div>
+          <div className="flex items-center gap-4">
+             <button 
+                onClick={handleBackToDashboard}
+                className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                title="Back to Dashboard"
+             >
+                 <ArrowLeft className="w-5 h-5" />
+             </button>
+             <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
+             <div className="flex items-center gap-3">
+                <div className="bg-blue-600 p-2 rounded-lg hidden sm:block">
+                    <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                    <h1 className="font-bold text-slate-800 text-sm sm:text-lg leading-tight truncate max-w-[150px] sm:max-w-xs">
+                        {inputs.hotelName || 'Untitled Project'}
+                    </h1>
+                </div>
+             </div>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2">
+            <button
+                onClick={handleSaveProject}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    lastSavedTime 
+                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+            >
+                {lastSavedTime ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                <span className="hidden sm:inline">{lastSavedTime ? 'Saved' : 'Save'}</span>
+            </button>
+
             <button
               onClick={() => setIsOwnerView(!isOwnerView)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              title={isOwnerView ? "Switch to Detailed View" : "Switch to Owner View"}
             >
               {isOwnerView ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isOwnerView ? 'Detailed View' : 'Owner Pitch View'}</span>
             </button>
             
             <button
               onClick={handleDownloadCsv}
               className="flex items-center gap-2 px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-sm font-medium hover:bg-emerald-100 transition-colors"
-              title="Export CSV Data"
+              title="Export CSV"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span className="hidden sm:inline">CSV</span>
             </button>
 
             <button
@@ -221,7 +343,7 @@ const App: React.FC = () => {
               className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-900 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isGeneratingPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              <span className="hidden sm:inline">{isGeneratingPdf ? 'Generating...' : 'PDF'}</span>
+              <span className="hidden sm:inline">{isGeneratingPdf ? 'Wait...' : 'PDF'}</span>
             </button>
           </div>
         </div>
@@ -273,7 +395,7 @@ const App: React.FC = () => {
                 />
             </div>
 
-            {/* NEW: Financial Overview (ROI/Valuation) */}
+            {/* Financial Overview (ROI/Valuation) */}
             <FinancialOverview metrics={metrics} inputs={inputs} />
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
