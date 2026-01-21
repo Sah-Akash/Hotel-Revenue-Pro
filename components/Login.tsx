@@ -123,6 +123,15 @@ const Login: React.FC = () => {
                 </div>
             </div>
         </div>
+
+        {/* Footer Attribution */}
+        <div className="absolute bottom-8 left-0 w-full flex justify-center z-20 pointer-events-none">
+            <div className="mx-4 px-6 py-2.5 rounded-full border border-slate-700 bg-slate-900/80 backdrop-blur-md pointer-events-auto shadow-lg hover:border-slate-600 transition-all">
+                <p className="text-slate-500 text-xs font-medium">
+                    App created by <span className="text-slate-200 hover:text-white transition-colors font-semibold cursor-default">Akash Sah</span>. All rights reserved.
+                </p>
+            </div>
+        </div>
     </div>
   );
 };

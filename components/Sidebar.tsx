@@ -124,6 +124,14 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
                     Sign In
                 </button>
              )}
+
+             {/* Credits */}
+             <div className="mt-6 pt-6 border-t border-slate-800/50 text-center">
+                <p className="text-[10px] text-slate-600 font-medium">
+                    App created by <span className="text-slate-500 hover:text-slate-300 transition-colors cursor-default">Akash Sah</span>
+                </p>
+                <p className="text-[10px] text-slate-700 mt-0.5 font-medium">All rights reserved.</p>
+             </div>
           </div>
         </div>
       </aside>
