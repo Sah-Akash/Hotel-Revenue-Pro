@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AppSettings } from '../types';
-import { Save, User, Coins, Percent } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { Save, User, Coins, Percent, ShieldCheck } from 'lucide-react';
 
 interface Props {
   settings: AppSettings;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 const Settings: React.FC<Props> = ({ settings, onSave }) => {
+  const { user } = useAuth();
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -37,19 +39,33 @@ const Settings: React.FC<Props> = ({ settings, onSave }) => {
                     <h2 className="text-xl font-bold text-slate-800">User Profile</h2>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-600 mb-2">Display Name</label>
-                        <input 
-                            type="text" 
-                            value={localSettings.userName}
-                            onChange={e => setLocalSettings({...localSettings, userName: e.target.value})}
-                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500"
-                            placeholder="Your Name"
-                        />
-                        <p className="text-xs text-slate-400 mt-2">Used in generated PDF reports.</p>
+                {user ? (
+                    <div className="flex items-start gap-6">
+                        {user.photoURL && (
+                            <img src={user.photoURL} alt="Profile" className="w-16 h-16 rounded-full border-2 border-slate-100" />
+                        )}
+                        <div className="flex-1 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-500 mb-1">Full Name</label>
+                                    <div className="text-slate-800 font-medium">{user.displayName}</div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
+                                    <div className="text-slate-800 font-medium">{user.email}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg w-fit">
+                                <ShieldCheck className="w-3 h-3" />
+                                <span>Account secured by Google Authentication</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="bg-slate-50 p-4 rounded-lg text-slate-500 text-sm">
+                        Sign in to view your profile details.
+                    </div>
+                )}
             </div>
 
             {/* Application Defaults */}

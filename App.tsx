@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { InputState, SavedProject, MetricSummary, ViewType, AppSettings } from './types';
 import { useCalculator } from './hooks/useCalculator';
+import { useAuth } from './contexts/AuthContext';
+import { db } from './firebase'; // Firestore instance
+import { collection, query, where, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
+
+// Components
 import InputSection from './components/InputSection';
 import PrintableInputSummary from './components/PrintableInputSummary';
 import SummaryCards from './components/SummaryCards';
@@ -11,8 +16,10 @@ import Dashboard from './components/Dashboard';
 import Sidebar from './components/Sidebar';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
+import Login from './components/Login';
+
 import { Building2, Eye, EyeOff, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu } from 'lucide-react';
-import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from './constants';
+import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST } from './constants';
 
 // Default initial state
 const INITIAL_INPUTS: InputState = {
@@ -37,14 +44,18 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const App: React.FC = () => {
+  // --- AUTH HOOK ---
+  const { user, loading: authLoading } = useAuth();
+
   // --- STATE ---
-  const [view, setView] = useState<ViewType>('dashboard');
+  const [view, setView] = useState<ViewType>('login'); // Default to login
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   
   // Editor State
-  const [currentId, setCurrentId] = useState<string | null>(null); // To track if we are editing an existing one
+  const [currentId, setCurrentId] = useState<string | null>(null);
   const [inputs, setInputs] = useState<InputState>(INITIAL_INPUTS);
   
   const [isOwnerView, setIsOwnerView] = useState(false);
@@ -55,20 +66,23 @@ const App: React.FC = () => {
   const metrics = useCalculator(inputs);
 
   // --- EFFECTS ---
-  
-  // Load from local storage on mount
-  useEffect(() => {
-    // Load Projects
-    const storedProjects = localStorage.getItem('hotel_revenue_pro_projects');
-    if (storedProjects) {
-      try {
-        setSavedProjects(JSON.parse(storedProjects));
-      } catch (e) {
-        console.error("Failed to load projects", e);
-      }
-    }
 
-    // Load Settings
+  // Handle Authentication State Changes
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (user) {
+        setView('dashboard');
+        fetchProjectsFromCloud(user.uid);
+    } else {
+        // Fallback to local storage if guest or logged out, or show login screen
+        // For this design, we force login view if not auth, but check local for data just in case we allow guest mode later
+        setView('login');
+    }
+  }, [user, authLoading]);
+
+  // Load Settings from LocalStorage (User preferences are usually local-first)
+  useEffect(() => {
     const storedSettings = localStorage.getItem('hotel_revenue_pro_settings');
     if (storedSettings) {
         try {
@@ -79,6 +93,47 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // --- DATA SYNC FUNCTIONS ---
+
+  const fetchProjectsFromCloud = async (uid: string) => {
+      if (!db) return; // Fallback to local only if firebase failed
+      setIsLoadingData(true);
+      try {
+          const q = query(collection(db, "projects"), where("userId", "==", uid));
+          const querySnapshot = await getDocs(q);
+          const projects: SavedProject[] = [];
+          querySnapshot.forEach((doc) => {
+              projects.push(doc.data() as SavedProject);
+          });
+          setSavedProjects(projects);
+      } catch (error) {
+          console.error("Error fetching projects: ", error);
+          // Fallback to local storage
+          const stored = localStorage.getItem('hotel_revenue_pro_projects');
+          if (stored) setSavedProjects(JSON.parse(stored));
+      } finally {
+          setIsLoadingData(false);
+      }
+  };
+
+  const saveProjectToCloud = async (project: SavedProject) => {
+      if (!user || !db) return;
+      try {
+          await setDoc(doc(db, "projects", project.id), project);
+      } catch (e) {
+          console.error("Error saving to cloud", e);
+      }
+  };
+
+  const deleteProjectFromCloud = async (id: string) => {
+      if (!user || !db) return;
+      try {
+          await deleteDoc(doc(db, "projects", id));
+      } catch (e) {
+          console.error("Error deleting from cloud", e);
+      }
+  };
+
   // --- HANDLERS ---
 
   const handleSaveSettings = (newSettings: AppSettings) => {
@@ -86,7 +141,7 @@ const App: React.FC = () => {
       localStorage.setItem('hotel_revenue_pro_settings', JSON.stringify(newSettings));
   };
 
-  const handleSaveProject = () => {
+  const handleSaveProject = async () => {
     const summary: MetricSummary = {
         monthlyRevenue: metrics.monthlyRevenue,
         monthlyNet: metrics.monthlyNet,
@@ -95,32 +150,48 @@ const App: React.FC = () => {
     };
 
     const now = Date.now();
-    let updatedProjects: SavedProject[];
+    let projectToSave: SavedProject;
 
     if (currentId) {
         // Update existing
-        updatedProjects = savedProjects.map(p => 
-            p.id === currentId 
-            ? { ...p, lastModified: now, inputs, summary } 
-            : p
-        );
+        const existing = savedProjects.find(p => p.id === currentId);
+        projectToSave = { 
+            ...(existing || {}), // keep existing props
+            id: currentId,
+            userId: user?.uid, // Ensure ownership
+            lastModified: now,
+            inputs,
+            summary 
+        } as SavedProject;
+
+        setSavedProjects(prev => prev.map(p => p.id === currentId ? projectToSave : p));
     } else {
         // Create new
         const newId = crypto.randomUUID();
-        const newProject: SavedProject = {
+        projectToSave = {
             id: newId,
+            userId: user?.uid,
             lastModified: now,
             inputs,
             summary
         };
-        updatedProjects = [newProject, ...savedProjects];
+        setSavedProjects(prev => [projectToSave, ...prev]);
         setCurrentId(newId);
     }
 
-    setSavedProjects(updatedProjects);
-    localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(updatedProjects));
-    setLastSavedTime(now);
+    // Persist
+    // 1. Local (Optimistic UI)
+    const currentProjects = currentId 
+        ? savedProjects.map(p => p.id === currentId ? projectToSave : p)
+        : [projectToSave, ...savedProjects];
+    localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(currentProjects));
+    
+    // 2. Cloud
+    if (user) {
+        await saveProjectToCloud(projectToSave);
+    }
 
+    setLastSavedTime(now);
     setTimeout(() => setLastSavedTime(null), 2000);
   };
 
@@ -141,12 +212,16 @@ const App: React.FC = () => {
     setIsOwnerView(false);
   };
 
-  const handleDeleteProject = (e: React.MouseEvent, id: string) => {
+  const handleDeleteProject = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if(window.confirm("Are you sure you want to delete this project?")) {
         const updated = savedProjects.filter(p => p.id !== id);
         setSavedProjects(updated);
         localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(updated));
+        
+        if (user) {
+            await deleteProjectFromCloud(id);
+        }
     }
   };
 
@@ -373,7 +448,7 @@ const App: React.FC = () => {
                             <div className="text-right">
                                 <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Report Date</div>
                                 <div className="text-sm font-medium text-slate-600">{new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
-                                {appSettings.userName && <div className="text-xs text-slate-400 mt-1">Prepared by {appSettings.userName}</div>}
+                                {user && <div className="text-xs text-slate-400 mt-1">Prepared by {user.displayName}</div>}
                             </div>
                         </div>
 
@@ -445,12 +520,26 @@ const App: React.FC = () => {
       </div>
   );
 
+  // --- LOADING STATE ---
+  if (authLoading) {
+    return (
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+        </div>
+    );
+  }
+
+  // --- LOGIN VIEW ---
+  if (view === 'login') {
+      return <Login />;
+  }
+
   // --- MAIN LAYOUT RENDERING ---
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
         
-        {/* Sidebar Navigation - Always present unless in print mode (handled by CSS) or potentially hidden in Editor if desired, but good for navigation */}
+        {/* Sidebar Navigation */}
         <Sidebar 
             currentView={view} 
             onChangeView={setView}
@@ -477,12 +566,20 @@ const App: React.FC = () => {
                 {view === 'editor' && renderEditor()}
                 
                 {view === 'dashboard' && (
-                    <Dashboard 
-                        projects={savedProjects}
-                        onCreateNew={handleCreateNew}
-                        onOpen={handleOpenProject}
-                        onDelete={handleDeleteProject}
-                    />
+                    <>
+                        {isLoadingData ? (
+                            <div className="flex items-center justify-center h-full">
+                                <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                            </div>
+                        ) : (
+                            <Dashboard 
+                                projects={savedProjects}
+                                onCreateNew={handleCreateNew}
+                                onOpen={handleOpenProject}
+                                onDelete={handleDeleteProject}
+                            />
+                        )}
+                    </>
                 )}
 
                 {view === 'analytics' && (
@@ -504,18 +601,6 @@ const App: React.FC = () => {
                             <li><strong>Financial Analysis:</strong> Calculate ROI, Debt Service Coverage Ratio (DSCR), and Property Valuation.</li>
                             <li><strong>Portfolio Dashboard:</strong> Save and manage multiple property projections in one place.</li>
                         </ul>
-                        
-                        <h3 className="text-lg font-bold text-slate-800 mb-2">Definitions:</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <span className="font-bold">NOI (Net Operating Income):</span>
-                                <p className="text-sm">Revenue minus all operating expenses. Excludes debt service and taxes.</p>
-                            </div>
-                            <div>
-                                <span className="font-bold">DSCR (Debt Service Coverage Ratio):</span>
-                                <p className="text-sm">NOI divided by Total Debt Service. A DSCR > 1.0 means the property generates enough income to pay its debts.</p>
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>

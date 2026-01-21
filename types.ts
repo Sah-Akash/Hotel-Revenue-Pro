@@ -57,6 +57,7 @@ export interface MetricSummary {
 
 export interface SavedProject {
     id: string;
+    userId?: string; // Add owner ID for cloud sync
     lastModified: number;
     inputs: InputState;
     summary: MetricSummary;
@@ -68,4 +69,11 @@ export interface AppSettings {
     defaultInterestRate: number;
 }
 
-export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'settings' | 'help';
+export interface UserProfile {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    photoURL: string | null;
+}
+
+export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'settings' | 'help' | 'login';

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ViewType } from '../types';
-import { LayoutDashboard, Calculator, PieChart, Settings, HelpCircle, LogOut, Building2, X } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { LayoutDashboard, PieChart, Settings, HelpCircle, LogOut, Building2, X, LogIn } from 'lucide-react';
 
 interface Props {
   currentView: ViewType;
@@ -10,12 +11,19 @@ interface Props {
 }
 
 const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }) => {
+  const { user, logout } = useAuth();
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'analytics', label: 'Analytics', icon: PieChart },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'help', label: 'Help & Support', icon: HelpCircle },
   ];
+
+  const handleLogout = async () => {
+    await logout();
+    onChangeView('login');
+  };
 
   return (
     <>
@@ -77,18 +85,37 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
 
           {/* User Profile / Footer */}
           <div className="p-4 border-t border-slate-800">
-             <div className="bg-slate-800 rounded-xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-xs">
-                    US
+             {user ? (
+                <div className="bg-slate-800 rounded-xl p-3 flex items-center gap-3">
+                    {user.photoURL ? (
+                        <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border border-slate-600" />
+                    ) : (
+                        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-xs">
+                            {user.displayName ? user.displayName.charAt(0) : 'U'}
+                        </div>
+                    )}
+                    
+                    <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white truncate">{user.displayName || 'User'}</div>
+                        <div className="text-[10px] text-slate-500 truncate">{user.email}</div>
+                    </div>
+                    <button 
+                        onClick={handleLogout}
+                        className="text-slate-500 hover:text-white p-1 rounded hover:bg-slate-700 transition-colors"
+                        title="Sign Out"
+                    >
+                        <LogOut className="w-4 h-4" />
+                    </button>
                 </div>
-                <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-white truncate">User Account</div>
-                    <div className="text-xs text-slate-500 truncate">Pro Plan</div>
-                </div>
-                <button className="text-slate-500 hover:text-white">
-                    <LogOut className="w-4 h-4" />
+             ) : (
+                <button 
+                    onClick={() => onChangeView('login')}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-white rounded-xl p-3 flex items-center justify-center gap-2 transition-colors text-sm font-medium"
+                >
+                    <LogIn className="w-4 h-4" />
+                    Sign In
                 </button>
-             </div>
+             )}
           </div>
         </div>
       </aside>
