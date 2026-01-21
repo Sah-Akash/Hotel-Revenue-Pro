@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SavedProject } from '../types';
-import { Plus, Trash2, Building2, Calendar, TrendingUp, PieChart, Search, ArrowUpDown } from 'lucide-react';
+import { Plus, Trash2, Building2, Calendar, TrendingUp, PieChart, Search, ArrowUpDown, MoreVertical, Wallet } from 'lucide-react';
 import { formatCurrency, formatNumber } from '../utils';
 
 interface Props {
@@ -31,80 +31,92 @@ const Dashboard: React.FC<Props> = ({ projects, onCreateNew, onOpen, onDelete })
   }, [projects, searchTerm, sortBy]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-6 md:p-12">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12 lg:p-16">
+      <div className="max-w-7xl mx-auto">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">Portfolio Dashboard</h1>
-            <p className="text-slate-500 text-sm">Manage your hotel revenue projections and financial models.</p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Portfolio Overview</h1>
+            <p className="text-slate-500 text-lg">Track performance across your hotel assets.</p>
           </div>
           <button 
             onClick={onCreateNew}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300 transform hover:-translate-y-0.5"
+            className="group flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-7 py-4 rounded-2xl font-semibold transition-all shadow-xl shadow-slate-200 hover:shadow-2xl hover:shadow-slate-300 hover:-translate-y-1"
           >
-            <Plus className="w-5 h-5" />
-            <span>New Project</span>
+            <Plus className="w-5 h-5 text-slate-300 group-hover:text-white transition-colors" />
+            <span>New Property Model</span>
           </button>
         </div>
 
         {/* Portfolio Stats Cards */}
         {projects.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                    <Building2 className="w-6 h-6" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-300 group">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="p-3.5 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <Building2 className="w-7 h-7" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50 px-2 py-1 rounded-lg">Assets</span>
                 </div>
                 <div>
-                    <div className="text-sm font-medium text-slate-500">Total Projects</div>
-                    <div className="text-2xl font-bold text-slate-800">{projects.length}</div>
+                    <div className="text-4xl font-extrabold text-slate-900 mb-1">{projects.length}</div>
+                    <div className="text-sm font-medium text-slate-500">Active Properties</div>
                 </div>
             </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                    <TrendingUp className="w-6 h-6" />
+
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-300 group">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                        <Wallet className="w-7 h-7" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50 px-2 py-1 rounded-lg">Cash Flow</span>
                 </div>
                 <div>
+                    <div className="text-4xl font-extrabold text-slate-900 mb-1">{formatCurrency(totalMonthlyNet)}</div>
                     <div className="text-sm font-medium text-slate-500">Monthly Net Income</div>
-                    <div className="text-2xl font-bold text-slate-800">{formatCurrency(totalMonthlyNet)}</div>
                 </div>
             </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
-                    <PieChart className="w-6 h-6" />
+
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-card hover:shadow-card-hover transition-all duration-300 group">
+                <div className="flex justify-between items-start mb-6">
+                    <div className="p-3.5 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                        <PieChart className="w-7 h-7" />
+                    </div>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider bg-slate-50 px-2 py-1 rounded-lg">Valuation</span>
                 </div>
                 <div>
-                    <div className="text-sm font-medium text-slate-500">Portfolio Valuation</div>
-                    <div className="text-2xl font-bold text-slate-800">{formatCurrency(totalValuation)}</div>
+                    <div className="text-4xl font-extrabold text-slate-900 mb-1">{formatCurrency(totalValuation)}</div>
+                    <div className="text-sm font-medium text-slate-500">Total Portfolio Value</div>
                 </div>
             </div>
           </div>
         )}
 
-        {/* Controls Toolbar (Search & Sort) */}
+        {/* Toolbar */}
         {projects.length > 0 && (
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="relative flex-grow max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 bg-white p-2 rounded-2xl border border-slate-200/60 shadow-sm">
+                <div className="relative flex-grow max-w-lg w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input 
                         type="text" 
-                        placeholder="Search projects..." 
+                        placeholder="Search by property name..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-50 text-sm"
+                        className="w-full pl-12 pr-4 py-3 bg-transparent font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none"
                     />
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="relative">
+                <div className="flex items-center gap-3 px-2 w-full sm:w-auto">
+                    <span className="text-sm font-medium text-slate-400 hidden sm:block">Sort by:</span>
+                    <div className="relative flex-1 sm:flex-none">
                         <select 
                             value={sortBy} 
                             onChange={(e) => setSortBy(e.target.value as any)}
-                            className="appearance-none bg-white border border-slate-200 pl-4 pr-10 py-2.5 rounded-xl text-sm font-medium text-slate-600 focus:outline-none focus:border-blue-400 cursor-pointer hover:bg-slate-50"
+                            className="w-full sm:w-auto appearance-none bg-slate-50 border border-slate-200 pl-4 pr-10 py-2.5 rounded-xl text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 cursor-pointer transition-all hover:bg-slate-100"
                         >
-                            <option value="date">Sort by Date</option>
-                            <option value="valuation">Sort by Valuation</option>
-                            <option value="net">Sort by Net Income</option>
+                            <option value="date">Last Modified</option>
+                            <option value="valuation">Valuation (High to Low)</option>
+                            <option value="net">Net Income (High to Low)</option>
                         </select>
                         <ArrowUpDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
@@ -113,71 +125,77 @@ const Dashboard: React.FC<Props> = ({ projects, onCreateNew, onOpen, onDelete })
         )}
 
         {/* Projects Grid */}
-        <div className="space-y-4">
+        <div className="space-y-8">
             {projects.length === 0 ? (
-                <div className="text-center py-24 bg-white rounded-3xl border border-slate-200 border-dashed">
-                    <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[2.5rem] border-2 border-slate-100 border-dashed">
+                    <div className="bg-slate-50 w-24 h-24 rounded-full flex items-center justify-center mb-8 shadow-inner">
                         <Building2 className="w-10 h-10 text-slate-300" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-800 mb-2">No calculations yet</h3>
-                    <p className="text-slate-500 max-w-sm mx-auto mb-8">Create your first hotel revenue projection to analyze income, expenses, and valuation.</p>
+                    <h3 className="text-2xl font-bold text-slate-800 mb-3">No models created yet</h3>
+                    <p className="text-slate-500 max-w-sm text-center mb-10 leading-relaxed">
+                        Start by creating your first financial model to analyze revenue, expenses, and valuation.
+                    </p>
                     <button 
                         onClick={onCreateNew}
-                        className="text-blue-600 font-semibold hover:text-blue-700 hover:underline flex items-center justify-center gap-2"
+                        className="text-white bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300 flex items-center gap-2"
                     >
-                        Start a new project <Plus className="w-4 h-4" />
+                        <Plus className="w-5 h-5" />
+                        Create First Model
                     </button>
                 </div>
             ) : filteredProjects.length === 0 ? (
-                <div className="text-center py-12">
-                    <p className="text-slate-500">No projects found matching "{searchTerm}"</p>
+                <div className="text-center py-20">
+                    <p className="text-slate-400 text-lg font-medium">No projects found matching "{searchTerm}"</p>
+                    <button onClick={() => setSearchTerm('')} className="text-blue-600 font-bold mt-2 hover:underline">Clear Search</button>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
                     {filteredProjects.map((project) => (
                         <div 
                             key={project.id} 
                             onClick={() => onOpen(project)}
-                            className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
+                            className="bg-white rounded-[2rem] p-8 border border-slate-200/60 shadow-card hover:shadow-card-hover hover:-translate-y-1 transition-all duration-300 cursor-pointer group flex flex-col h-full"
                         >
-                            <div className="flex justify-between items-start mb-6 relative z-10">
-                                <div className="bg-slate-50 p-3 rounded-xl text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
-                                    <Building2 className="w-6 h-6" />
+                            <div className="flex justify-between items-start mb-8">
+                                <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 rounded-2xl border border-slate-100 group-hover:scale-110 transition-transform duration-500">
+                                    <Building2 className="w-8 h-8 text-slate-400 group-hover:text-blue-600 transition-colors" />
                                 </div>
-                                <button 
-                                    onClick={(e) => onDelete(e, project.id)}
-                                    className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100 z-20"
-                                    title="Delete Project"
-                                >
-                                    <Trash2 className="w-5 h-5" />
-                                </button>
+                                <div className="relative">
+                                     <button 
+                                        onClick={(e) => onDelete(e, project.id)}
+                                        className="text-slate-300 hover:text-red-500 p-2 rounded-xl hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                                        title="Delete Project"
+                                    >
+                                        <Trash2 className="w-5 h-5" />
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="mb-6 relative z-10">
-                                <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1" title={project.inputs.hotelName}>
+                            <div className="mb-auto">
+                                <h3 className="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors line-clamp-1 leading-snug">
                                     {project.inputs.hotelName || 'Untitled Project'}
                                 </h3>
-                                <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <Calendar className="w-3 h-3" />
+                                <div className="flex items-center gap-2 text-sm text-slate-400 font-medium">
+                                    <Calendar className="w-4 h-4" />
                                     <span>{new Date(project.lastModified).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50 relative z-10">
+                            <div className="mt-8 pt-6 border-t border-slate-50 grid grid-cols-2 gap-6">
                                 <div>
-                                    <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-1">Monthly Net</div>
-                                    <div className="font-bold text-slate-700">{formatCurrency(project.summary.monthlyNet)}</div>
+                                    <div className="text-[11px] text-slate-400 uppercase tracking-widest font-bold mb-1">Monthly Net</div>
+                                    <div className="text-lg font-bold text-slate-900">{formatCurrency(project.summary.monthlyNet)}</div>
                                 </div>
                                 <div>
                                     {project.inputs.includeFinancials ? (
                                         <>
-                                            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-1">ROI</div>
-                                            <div className="font-bold text-indigo-600">{formatNumber(project.summary.roi)}%</div>
+                                            <div className="text-[11px] text-slate-400 uppercase tracking-widest font-bold mb-1">ROI</div>
+                                            <div className="text-lg font-bold text-emerald-600">{formatNumber(project.summary.roi)}%</div>
                                         </>
                                     ) : (
                                         <>
-                                            <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-1">Revenue</div>
-                                            <div className="font-bold text-slate-700">{formatCurrency(project.summary.monthlyRevenue)}</div>
+                                            <div className="text-[11px] text-slate-400 uppercase tracking-widest font-bold mb-1">Revenue</div>
+                                            <div className="text-lg font-bold text-slate-900">{formatCurrency(project.summary.monthlyRevenue)}</div>
                                         </>
                                     )}
                                 </div>

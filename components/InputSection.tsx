@@ -1,7 +1,7 @@
 import React from 'react';
 import { InputState, ExtraDeduction } from '../types';
 import { OCCUPANCY_PRESETS, ROOM_PRESETS, PRICE_PRESETS, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from '../constants';
-import { Users, BedDouble, IndianRupee, MinusCircle, Plus, Trash2, Wrench, Coins, Landmark, CalendarClock } from 'lucide-react';
+import { Users, BedDouble, IndianRupee, MinusCircle, Plus, Trash2, Wrench, Coins, Landmark, CalendarClock, ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../utils';
 
 interface Props {
@@ -67,76 +67,86 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
   }
 
   return (
-    <div className="mb-8 print:hidden">
+    <div className="mb-12 print:hidden space-y-8">
       
       {/* Hotel Name Input */}
-      <div className="mb-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-         <label className="block text-sm font-medium text-slate-500 mb-2 uppercase tracking-wide">Property Name</label>
+      <div className="group relative">
          <input
             type="text"
             value={inputs.hotelName}
             onChange={(e) => handleChange('hotelName', e.target.value)}
-            placeholder="Enter Hotel Name (e.g. Grand Seaside Resort)"
-            className="w-full text-xl font-bold text-slate-800 border-b border-slate-200 focus:border-blue-500 outline-none pb-2 bg-transparent transition-colors placeholder:font-normal placeholder:text-slate-300"
+            placeholder="Property Name (e.g. Grand Plaza)"
+            className="w-full text-4xl md:text-5xl font-extrabold text-slate-900 bg-transparent border-none placeholder:text-slate-300 focus:ring-0 px-0 transition-colors tracking-tight"
          />
+         <div className="h-1 w-20 bg-blue-600 rounded-full mt-4 group-focus-within:w-full transition-all duration-500 ease-out opacity-20 group-focus-within:opacity-100"></div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Total Rooms */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
-          <div className="flex items-center gap-2 mb-4 text-slate-500 font-medium">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600 group-hover:bg-blue-100 transition-colors">
-              <BedDouble className="w-5 h-5" />
-            </div>
-            <span>Total Rooms</span>
+        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
+          <div className="flex justify-between items-center mb-6">
+             <div className="flex items-center gap-3">
+                 <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                    <BedDouble className="w-5 h-5" />
+                 </div>
+                 <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Rooms</span>
+             </div>
+             <div className="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded text-xs">{inputs.totalRooms} keys</div>
           </div>
-          <div className="mb-4 relative">
+
+          <div className="relative mb-6">
             <input
               type="number"
               min="0"
               value={inputs.totalRooms}
               onChange={(e) => handleChange('totalRooms', Number(e.target.value))}
               onFocus={handleFocus}
-              className="w-full text-3xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-blue-500 outline-none pb-2 bg-transparent transition-colors"
+              className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none"
               placeholder="0"
             />
           </div>
-          <input
-            type="range"
-            min="1"
-            max="100"
-            value={inputs.totalRooms}
-            onChange={(e) => handleChange('totalRooms', Number(e.target.value))}
-            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600 mb-4 hover:bg-slate-200 transition-colors"
-          />
-          <div className="flex flex-wrap gap-2">
-            {ROOM_PRESETS.map((val) => (
-              <button
-                key={val}
-                onClick={() => handleChange('totalRooms', val)}
-                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all ${
-                  inputs.totalRooms === val
-                    ? 'bg-blue-50 border-blue-200 text-blue-700'
-                    : 'bg-white border-slate-100 text-slate-500 hover:border-blue-200 hover:text-blue-600'
-                }`}
-              >
-                {val}
-              </button>
-            ))}
+
+          <div className="space-y-4">
+             <input
+                type="range"
+                min="1"
+                max="100"
+                value={inputs.totalRooms}
+                onChange={(e) => handleChange('totalRooms', Number(e.target.value))}
+                className="w-full accent-blue-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+             />
+             <div className="flex flex-wrap gap-2">
+                {ROOM_PRESETS.map((val) => (
+                <button
+                    key={val}
+                    onClick={() => handleChange('totalRooms', val)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    inputs.totalRooms === val
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-200'
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                    }`}
+                >
+                    {val}
+                </button>
+                ))}
+            </div>
           </div>
         </div>
 
         {/* Occupancy */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
-          <div className="flex items-center gap-2 mb-4 text-slate-500 font-medium">
-            <div className="p-2 bg-green-50 rounded-lg text-green-600 group-hover:bg-green-100 transition-colors">
-               <Users className="w-5 h-5" />
-            </div>
-            <span>Occupancy (%)</span>
+        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
+          <div className="flex justify-between items-center mb-6">
+             <div className="flex items-center gap-3">
+                 <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl">
+                    <Users className="w-5 h-5" />
+                 </div>
+                 <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Occupancy</span>
+             </div>
+             <div className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">{inputs.occupancyPercent}%</div>
           </div>
-          
-          <div className="mb-4 relative flex items-center">
-              <input
+
+          <div className="relative mb-6">
+            <input
                   type="number"
                   min="0"
                   max="100"
@@ -147,127 +157,126 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
                       handleChange('occupancyPercent', val);
                   }}
                   onFocus={handleFocus}
-                  className="w-full text-3xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-green-500 outline-none pb-2 bg-transparent transition-colors"
+                  className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none"
                   placeholder="0"
-              />
+            />
           </div>
-          
-          {/* Toggle Rounding */}
-          {!isOwnerView && (
-               <div className="mb-4 flex items-center gap-2 text-xs text-slate-400">
-                  <input 
-                      type="checkbox" 
-                      id="roundSrn" 
-                      checked={inputs.roundSRN} 
-                      onChange={(e) => handleChange('roundSRN', e.target.checked)}
-                      className="accent-green-600 rounded"
-                  />
-                  <label htmlFor="roundSrn" className="cursor-pointer hover:text-slate-600">Round rooms</label>
-               </div>
-          )}
 
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            value={inputs.occupancyPercent}
-            onChange={(e) => handleChange('occupancyPercent', Number(e.target.value))}
-            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-green-600 mb-4 hover:bg-slate-200 transition-colors"
-          />
-          <div className="flex flex-wrap gap-2">
-            {OCCUPANCY_PRESETS.map((val) => (
-              <button
-                key={val}
-                onClick={() => handleChange('occupancyPercent', val)}
-                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all ${
-                  inputs.occupancyPercent === val
-                    ? 'bg-green-50 border-green-200 text-green-700'
-                    : 'bg-white border-slate-100 text-slate-500 hover:border-green-200 hover:text-green-600'
-                }`}
-              >
-                {val}%
-              </button>
-            ))}
+           <div className="space-y-4">
+             <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={inputs.occupancyPercent}
+                onChange={(e) => handleChange('occupancyPercent', Number(e.target.value))}
+                className="w-full accent-emerald-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+             />
+             <div className="flex flex-wrap gap-2">
+                {OCCUPANCY_PRESETS.map((val) => (
+                <button
+                    key={val}
+                    onClick={() => handleChange('occupancyPercent', val)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    inputs.occupancyPercent === val
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200'
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                    }`}
+                >
+                    {val}%
+                </button>
+                ))}
+            </div>
           </div>
         </div>
 
         {/* Room Price */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
-          <div className="flex items-center gap-2 mb-4 text-slate-500 font-medium">
-            <div className="p-2 bg-purple-50 rounded-lg text-purple-600 group-hover:bg-purple-100 transition-colors">
-              <IndianRupee className="w-5 h-5" />
-            </div>
-            <span>Avg Room Price</span>
+        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
+          <div className="flex justify-between items-center mb-6">
+             <div className="flex items-center gap-3">
+                 <div className="p-2.5 bg-violet-50 text-violet-600 rounded-xl">
+                    <IndianRupee className="w-5 h-5" />
+                 </div>
+                 <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Avg Rate</span>
+             </div>
+             <div className="text-violet-600 font-bold bg-violet-50 px-2 py-1 rounded text-xs">ARR</div>
           </div>
-          <div className="mb-4">
-            <input
+          
+          <div className="relative mb-6">
+             <span className="text-xl font-medium text-slate-300 absolute -left-4 top-2">₹</span>
+             <input
               type="number"
               min="0"
               value={inputs.roomPrice}
               onChange={(e) => handleChange('roomPrice', Number(e.target.value))}
               onFocus={handleFocus}
-              className="w-full text-3xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-purple-500 outline-none pb-2 bg-transparent transition-colors"
+              className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none pl-1"
               placeholder="0"
             />
           </div>
-          <input
-            type="range"
-            min="500"
-            max="10000"
-            step="100"
-            value={inputs.roomPrice}
-            onChange={(e) => handleChange('roomPrice', Number(e.target.value))}
-            className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-purple-600 mb-4 hover:bg-slate-200 transition-colors"
-          />
-          <div className="flex flex-wrap gap-2">
-            {PRICE_PRESETS.map((val) => (
-              <button
-                key={val}
-                onClick={() => handleChange('roomPrice', val)}
-                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all ${
-                  inputs.roomPrice === val
-                    ? 'bg-purple-50 border-purple-200 text-purple-700'
-                    : 'bg-white border-slate-100 text-slate-500 hover:border-purple-200 hover:text-purple-600'
-                }`}
-              >
-                {formatCurrency(val)}
-              </button>
-            ))}
+
+           <div className="space-y-4">
+             <input
+                type="range"
+                min="500"
+                max="10000"
+                step="100"
+                value={inputs.roomPrice}
+                onChange={(e) => handleChange('roomPrice', Number(e.target.value))}
+                className="w-full accent-violet-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+             />
+             <div className="flex flex-wrap gap-2">
+                {PRICE_PRESETS.map((val) => (
+                <button
+                    key={val}
+                    onClick={() => handleChange('roomPrice', val)}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    inputs.roomPrice === val
+                        ? 'bg-violet-600 text-white shadow-md shadow-violet-200'
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                    }`}
+                >
+                    {formatCurrency(val)}
+                </button>
+                ))}
+            </div>
           </div>
         </div>
 
-        {/* Maintenance Cost Per Room */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
-          <div className="flex items-center gap-2 mb-4 text-slate-500 font-medium">
-            <div className="p-2 bg-orange-50 rounded-lg text-orange-600 group-hover:bg-orange-100 transition-colors">
-              <Wrench className="w-5 h-5" />
-            </div>
-            <span>Maint. Cost / Room</span>
+        {/* Maintenance Cost */}
+        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
+          <div className="flex justify-between items-center mb-6">
+             <div className="flex items-center gap-3">
+                 <div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl">
+                    <Wrench className="w-5 h-5" />
+                 </div>
+                 <span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Ops Cost</span>
+             </div>
+             <div className="text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded text-xs">/ Room</div>
           </div>
-          <div className="mb-4">
+
+          <div className="relative mb-6">
+            <span className="text-xl font-medium text-slate-300 absolute -left-4 top-2">₹</span>
             <input
               type="number"
               min="0"
               value={inputs.maintenanceCostPerRoom}
               onChange={(e) => handleChange('maintenanceCostPerRoom', Number(e.target.value))}
               onFocus={handleFocus}
-              className="w-full text-3xl font-bold text-slate-800 border-b-2 border-slate-100 focus:border-orange-500 outline-none pb-2 bg-transparent transition-colors"
+              className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none pl-1"
               placeholder="380"
             />
           </div>
-          <div className="mb-4 text-xs text-slate-400">
-             Base operational cost per sold room per day (e.g. laundry, utilities, cleaning supplies).
-          </div>
-           <div className="flex flex-wrap gap-2">
+          
+           <div className="flex flex-wrap gap-2 mt-auto pt-4">
             {[200, 380, 500].map((val) => (
               <button
                 key={val}
                 onClick={() => handleChange('maintenanceCostPerRoom', val)}
-                className={`px-3 py-1 text-xs font-medium rounded-full border transition-all ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   inputs.maintenanceCostPerRoom === val
-                    ? 'bg-orange-50 border-orange-200 text-orange-700'
-                    : 'bg-white border-slate-100 text-slate-500 hover:border-orange-200 hover:text-orange-600'
+                    ? 'bg-amber-500 text-white shadow-md shadow-amber-200'
+                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
                 }`}
               >
                 {val}
@@ -278,142 +287,107 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
       </div>
 
       {/* Financial Section Toggle */}
-      <div className="mb-6">
-        <button 
+      <div className="mt-8">
+        <div 
             onClick={toggleFinancials}
-            className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${
+            className={`w-full flex items-center justify-between p-6 rounded-3xl border-2 transition-all duration-300 cursor-pointer group ${
                 inputs.includeFinancials 
-                ? 'bg-indigo-50 border-indigo-200 shadow-sm' 
-                : 'bg-white border-slate-200 hover:bg-slate-50'
+                ? 'bg-slate-900 border-slate-900 shadow-xl shadow-slate-200' 
+                : 'bg-white border-slate-100 hover:border-slate-200'
             }`}
         >
-            <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${inputs.includeFinancials ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    <Landmark className="w-5 h-5" />
+            <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-2xl ${inputs.includeFinancials ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                    <Landmark className="w-6 h-6" />
                 </div>
                 <div className="text-left">
-                    <div className={`font-bold ${inputs.includeFinancials ? 'text-indigo-900' : 'text-slate-700'}`}>Investment & Financing Analysis</div>
-                    <div className="text-xs text-slate-500">Calculate EMI, ROI, Valuation and Cash Flow</div>
+                    <div className={`text-lg font-bold ${inputs.includeFinancials ? 'text-white' : 'text-slate-800'}`}>Investment Analysis</div>
+                    <div className={`text-sm ${inputs.includeFinancials ? 'text-slate-400' : 'text-slate-500'}`}>Include loans, ROI, and Valuation metrics</div>
                 </div>
             </div>
-            <div className={`text-sm font-medium ${inputs.includeFinancials ? 'text-indigo-700' : 'text-slate-400'}`}>
-                {inputs.includeFinancials ? 'Enabled' : 'Enable'}
+            <div className={`p-2 rounded-full border ${inputs.includeFinancials ? 'border-slate-700 bg-slate-800 text-white' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+                <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${inputs.includeFinancials ? 'rotate-180' : ''}`} />
             </div>
-        </button>
+        </div>
       </div>
 
-      {/* Financial Inputs - Conditionally Rendered */}
+      {/* Financial Inputs */}
       {inputs.includeFinancials && (
-         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 animate-in slide-in-from-top-4 duration-300">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-in slide-in-from-top-4 duration-300">
              
-             {/* Total Property Value */}
-             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
-                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Total Project Cost / Value</label>
-                <div className="relative">
-                    <IndianRupee className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
-                    <input
-                        type="number"
-                        value={inputs.propertyValue}
-                        onChange={(e) => handleChange('propertyValue', Number(e.target.value))}
-                        onFocus={handleFocus}
-                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-5 pb-1 outline-none"
-                    />
+             {[
+               { label: "Property Value", icon: IndianRupee, key: 'propertyValue', suffix: '' },
+               { label: "Loan Amount", icon: Coins, key: 'loanAmount', suffix: '' },
+               { label: "Interest Rate", icon: Wrench, key: 'interestRate', suffix: '%' },
+               { label: "Loan Tenure", icon: CalendarClock, key: 'loanTermYears', suffix: 'Yrs' }
+             ].map((field) => (
+                <div key={field.key} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">{field.label}</label>
+                    <div className="flex items-baseline gap-1">
+                        {field.key === 'propertyValue' || field.key === 'loanAmount' ? <span className="text-slate-300 font-medium">₹</span> : null}
+                        <input
+                            type="number"
+                            // @ts-ignore
+                            value={inputs[field.key]}
+                            // @ts-ignore
+                            onChange={(e) => handleChange(field.key, Number(e.target.value))}
+                            onFocus={handleFocus}
+                            step={field.key === 'interestRate' ? "0.1" : "1"}
+                            className="w-full text-2xl font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 outline-none"
+                        />
+                        <span className="text-sm font-bold text-slate-400">{field.suffix}</span>
+                    </div>
                 </div>
-             </div>
-
-             {/* Loan Amount */}
-             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
-                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Loan Amount</label>
-                <div className="relative">
-                    <IndianRupee className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
-                    <input
-                        type="number"
-                        value={inputs.loanAmount}
-                        onChange={(e) => handleChange('loanAmount', Number(e.target.value))}
-                        onFocus={handleFocus}
-                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-5 pb-1 outline-none"
-                    />
-                </div>
-                <div className="mt-2 text-[10px] text-indigo-400 font-medium">
-                    LTV: {inputs.propertyValue > 0 ? Math.round((inputs.loanAmount / inputs.propertyValue) * 100) : 0}%
-                </div>
-             </div>
-
-             {/* Interest Rate */}
-             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
-                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Interest Rate (%)</label>
-                <div className="relative">
-                    <Coins className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
-                    <input
-                        type="number"
-                        step="0.1"
-                        value={inputs.interestRate}
-                        onChange={(e) => handleChange('interestRate', Number(e.target.value))}
-                        onFocus={handleFocus}
-                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-6 pb-1 outline-none"
-                    />
-                </div>
-             </div>
-
-             {/* Tenure */}
-             <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100">
-                <label className="block text-xs font-bold text-indigo-400 uppercase tracking-wide mb-2">Loan Tenure (Years)</label>
-                <div className="relative">
-                    <CalendarClock className="w-4 h-4 absolute left-0 top-1.5 text-indigo-400" />
-                    <input
-                        type="number"
-                        value={inputs.loanTermYears}
-                        onChange={(e) => handleChange('loanTermYears', Number(e.target.value))}
-                        onFocus={handleFocus}
-                        className="w-full bg-transparent border-b border-indigo-200 focus:border-indigo-500 text-xl font-bold text-indigo-900 pl-6 pb-1 outline-none"
-                    />
-                </div>
-             </div>
+             ))}
          </div>
       )}
 
       {/* Extra Deduction Section */}
       {!isOwnerView && (
-        <div className="bg-slate-50/50 rounded-xl border border-slate-200 border-dashed p-4">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2 text-slate-500">
-                    <MinusCircle className="w-4 h-4 text-red-400" />
-                    <span className="text-sm font-medium">Additional Deductions (Monthly)</span>
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-red-50 text-red-500 rounded-lg">
+                        <MinusCircle className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-slate-800">Additional Expenses</h3>
+                        <p className="text-xs text-slate-400 font-medium">Monthly recurring costs like salaries or marketing</p>
+                    </div>
                 </div>
                 <button 
                     onClick={handleAddDeduction}
-                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors border border-blue-200"
+                    className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all border border-slate-200 hover:border-blue-200"
                 >
-                    <Plus className="w-3 h-3" /> Add Expense
+                    <Plus className="w-4 h-4" /> Add Item
                 </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {inputs.extraDeductions.map((deduction) => (
-                    <div key={deduction.id} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center animate-in fade-in slide-in-from-top-1 duration-200">
+                    <div key={deduction.id} className="flex flex-col sm:flex-row gap-4 items-start sm:items-center p-4 bg-slate-50 rounded-2xl animate-in fade-in slide-in-from-top-1 duration-200 border border-slate-100 focus-within:border-blue-300 focus-within:shadow-sm transition-all">
                         <input
                             type="text"
                             value={deduction.name}
                             onChange={(e) => handleDeductionChange(deduction.id, 'name', e.target.value)}
                             placeholder="Expense Name (e.g. Manager Salary)"
-                            className="flex-1 w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
+                            className="flex-1 w-full bg-transparent border-none focus:ring-0 text-slate-700 font-medium placeholder:text-slate-400 p-0"
                         />
-                        <div className="flex w-full sm:w-auto items-center gap-2">
-                            <div className="relative w-full sm:w-32">
-                                <span className="absolute left-3 top-2 text-slate-400 text-sm">₹</span>
+                        <div className="flex w-full sm:w-auto items-center gap-4">
+                            <div className="relative w-full sm:w-32 bg-white rounded-lg border border-slate-200 focus-within:border-blue-400 px-3 py-1.5 flex items-center">
+                                <span className="text-slate-400 text-sm mr-1">₹</span>
                                 <input
                                     type="number"
                                     min="0"
                                     value={deduction.amount || ''}
                                     onChange={(e) => handleDeductionChange(deduction.id, 'amount', Number(e.target.value))}
                                     placeholder="0"
-                                    className="w-full px-3 py-2 pl-7 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-blue-400 bg-white"
+                                    className="w-full bg-transparent border-none focus:ring-0 text-right font-bold text-slate-700 p-0"
                                 />
                             </div>
                             <button
                                 onClick={() => handleRemoveDeduction(deduction.id)}
-                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Remove deduction"
+                                className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>
@@ -421,8 +395,8 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
                     </div>
                 ))}
                 {inputs.extraDeductions.length === 0 && (
-                    <div className="text-center py-6 text-slate-400 text-sm bg-white rounded-lg border border-slate-100">
-                        No extra deductions added. Click "Add Expense" to add monthly costs.
+                    <div className="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-100 rounded-2xl">
+                        No extra expenses added yet.
                     </div>
                 )}
             </div>

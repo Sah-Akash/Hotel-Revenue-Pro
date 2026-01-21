@@ -10,62 +10,61 @@ interface Props {
 }
 
 const RevenueTable: React.FC<Props> = ({ metrics, isOwnerView, extraDeductions }) => {
-  const hasExtraDeductions = extraDeductions.length > 0;
-  // If financial metrics (EMI) are present > 0, we show the full waterfall
   const showFinancials = metrics.monthlyEMI > 0 || metrics.roi > 0;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-      <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-        <h3 className="text-lg font-bold text-slate-800">Revenue Breakdown</h3>
-        {isOwnerView && <span className="text-xs bg-slate-100 text-slate-500 px-2 py-1 rounded">Simplified View</span>}
+    <div className="bg-white rounded-3xl shadow-card border border-slate-100 overflow-hidden">
+      <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div>
+            <h3 className="text-lg font-bold text-slate-900">Financial Breakdown</h3>
+            <p className="text-sm text-slate-500 font-medium mt-1">Detailed view of income and expenses</p>
+        </div>
+        {isOwnerView && <span className="text-xs font-bold bg-slate-200 text-slate-600 px-3 py-1.5 rounded-full uppercase tracking-wide">Owner View</span>}
       </div>
       
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
-              <th className="p-4 font-semibold">Type</th>
-              <th className="p-4 font-semibold text-right">Daily</th>
-              <th className="p-4 font-semibold text-right">Monthly</th>
-              <th className="p-4 font-semibold text-right">Yearly</th>
+            <tr className="border-b border-slate-100">
+              <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-left">Category</th>
+              <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Daily</th>
+              <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Monthly</th>
+              <th className="px-8 py-5 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Yearly</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {/* Gross Revenue */}
-            <tr className="group hover:bg-slate-50/50 transition-colors">
-              <td className="p-4">
-                <div className="font-semibold text-slate-700">Gross Revenue</div>
-                {!isOwnerView && <div className="text-xs text-slate-400">Total sales before deductions</div>}
+            <tr className="group hover:bg-slate-50 transition-colors">
+              <td className="px-8 py-5">
+                <div className="font-bold text-slate-800 text-sm">Gross Revenue</div>
               </td>
-              <td className="p-4 text-right font-medium text-slate-600">{formatCurrency(metrics.dailyRevenue)}</td>
-              <td className="p-4 text-right font-medium text-slate-600">{formatCurrency(metrics.monthlyRevenue)}</td>
-              <td className="p-4 text-right font-medium text-slate-600">{formatCurrency(metrics.yearlyRevenue)}</td>
+              <td className="px-8 py-5 text-right font-semibold text-slate-700 font-mono text-sm">{formatCurrency(metrics.dailyRevenue)}</td>
+              <td className="px-8 py-5 text-right font-semibold text-slate-700 font-mono text-sm">{formatCurrency(metrics.monthlyRevenue)}</td>
+              <td className="px-8 py-5 text-right font-semibold text-slate-700 font-mono text-sm">{formatCurrency(metrics.yearlyRevenue)}</td>
             </tr>
 
-            {/* Deductions Section */}
+            {/* Deductions */}
             {!isOwnerView && (
               <>
                 <tr className="group hover:bg-red-50/10 transition-colors">
-                  <td className="p-4">
-                    <div className="font-medium text-red-600">OTA Commission (18%)</div>
-                    <div className="text-xs text-slate-400">Booking platforms fees</div>
+                  <td className="px-8 py-5 pl-12 relative">
+                    <div className="absolute left-8 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-red-400"></div>
+                    <div className="font-medium text-slate-600 text-sm">OTA Commission (18%)</div>
                   </td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.dailyOta)}</td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.monthlyOta)}</td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.yearlyOta)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(metrics.dailyOta)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(metrics.monthlyOta)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(metrics.yearlyOta)}</td>
                 </tr>
                 <tr className="group hover:bg-red-50/10 transition-colors">
-                  <td className="p-4">
-                    <div className="font-medium text-red-600">Maintenance Cost</div>
-                    <div className="text-xs text-slate-400">Staff, Utilities, Upkeep</div>
+                  <td className="px-8 py-5 pl-12 relative">
+                    <div className="absolute left-8 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-red-400"></div>
+                    <div className="font-medium text-slate-600 text-sm">Maintenance</div>
                   </td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.dailyMaintenance)}</td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.monthlyMaintenance)}</td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.yearlyMaintenance)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(metrics.dailyMaintenance)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(metrics.monthlyMaintenance)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(metrics.yearlyMaintenance)}</td>
                 </tr>
                 
-                {/* Individual Extra Deductions */}
                 {extraDeductions.map((deduction) => {
                    if (!deduction.amount) return null;
                    const monthly = deduction.amount;
@@ -74,63 +73,60 @@ const RevenueTable: React.FC<Props> = ({ metrics, isOwnerView, extraDeductions }
 
                    return (
                     <tr key={deduction.id} className="group hover:bg-red-50/10 transition-colors">
-                        <td className="p-4">
-                            <div className="font-medium text-red-600">{deduction.name || 'Unnamed Expense'}</div>
-                            <div className="text-xs text-slate-400">Additional fixed expense</div>
+                        <td className="px-8 py-5 pl-12 relative">
+                            <div className="absolute left-8 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-red-400"></div>
+                            <div className="font-medium text-slate-600 text-sm">{deduction.name || 'Expense'}</div>
                         </td>
-                        <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(daily)}</td>
-                        <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(monthly)}</td>
-                        <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(yearly)}</td>
+                        <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(daily)}</td>
+                        <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(monthly)}</td>
+                        <td className="px-8 py-5 text-right text-red-500 text-sm font-mono opacity-80">-{formatCurrency(yearly)}</td>
                     </tr>
                    );
                 })}
               </>
             )}
 
-            {/* If Owner View, combine deductions */}
             {isOwnerView && (
                <tr className="group hover:bg-red-50/10 transition-colors">
-                  <td className="p-4">
-                    <div className="font-medium text-red-600">Total Deductions</div>
-                    <div className="text-xs text-slate-400">OTA + Maintenance {hasExtraDeductions ? '+ Extras' : ''}</div>
+                  <td className="px-8 py-5 pl-12">
+                    <div className="font-medium text-red-600 text-sm">Total Deductions</div>
                   </td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.dailyOta + metrics.dailyMaintenance + metrics.dailyExtra)}</td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.monthlyOta + metrics.monthlyMaintenance + metrics.monthlyExtra)}</td>
-                  <td className="p-4 text-right text-red-500 text-sm">-{formatCurrency(metrics.yearlyOta + metrics.yearlyMaintenance + metrics.yearlyExtra)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono">-{formatCurrency(metrics.dailyOta + metrics.dailyMaintenance + metrics.dailyExtra)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono">-{formatCurrency(metrics.monthlyOta + metrics.monthlyMaintenance + metrics.monthlyExtra)}</td>
+                  <td className="px-8 py-5 text-right text-red-500 text-sm font-mono">-{formatCurrency(metrics.yearlyOta + metrics.yearlyMaintenance + metrics.yearlyExtra)}</td>
                 </tr>
             )}
 
             {/* NOI / Net Income */}
-            <tr className={`bg-blue-50/30 ${showFinancials ? 'border-b border-slate-200' : ''}`}>
-              <td className="p-4">
-                <div className="font-bold text-blue-700">{showFinancials ? 'Net Operating Income (NOI)' : 'Net Income'}</div>
-                <div className="text-xs text-blue-400">Operating profit before debt</div>
+            <tr className="bg-slate-900/5 border-t border-slate-200">
+              <td className="px-8 py-5">
+                <div className="font-bold text-slate-900 text-sm uppercase tracking-wide">{showFinancials ? 'NOI (Operating Income)' : 'Net Income'}</div>
               </td>
-              <td className="p-4 text-right font-bold text-blue-700">{formatCurrency(metrics.dailyNet)}</td>
-              <td className="p-4 text-right font-bold text-blue-700">{formatCurrency(metrics.monthlyNet)}</td>
-              <td className="p-4 text-right font-bold text-blue-700">{formatCurrency(metrics.yearlyNet)}</td>
+              <td className="px-8 py-5 text-right font-bold text-slate-900 font-mono">{formatCurrency(metrics.dailyNet)}</td>
+              <td className="px-8 py-5 text-right font-bold text-slate-900 font-mono">{formatCurrency(metrics.monthlyNet)}</td>
+              <td className="px-8 py-5 text-right font-bold text-slate-900 font-mono">{formatCurrency(metrics.yearlyNet)}</td>
             </tr>
 
             {/* Financials: Debt Service & Cash Flow */}
             {showFinancials && (
                 <>
                     <tr className="group hover:bg-indigo-50/10 transition-colors">
-                        <td className="p-4">
-                            <div className="font-medium text-indigo-600">Debt Service (EMI)</div>
-                            <div className="text-xs text-slate-400">Loan repayment (Principal + Interest)</div>
+                        <td className="px-8 py-5 pl-12 relative">
+                            <div className="absolute left-8 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-indigo-400"></div>
+                            <div className="font-medium text-slate-600 text-sm">Loan EMI</div>
                         </td>
-                        <td className="p-4 text-right text-indigo-500 text-sm">-{formatCurrency(metrics.monthlyEMI / 30)}</td>
-                        <td className="p-4 text-right text-indigo-500 text-sm">-{formatCurrency(metrics.monthlyEMI)}</td>
-                        <td className="p-4 text-right text-indigo-500 text-sm">-{formatCurrency(metrics.yearlyEMI)}</td>
+                        <td className="px-8 py-5 text-right text-indigo-600 text-sm font-mono opacity-90">-{formatCurrency(metrics.monthlyEMI / 30)}</td>
+                        <td className="px-8 py-5 text-right text-indigo-600 text-sm font-mono opacity-90">-{formatCurrency(metrics.monthlyEMI)}</td>
+                        <td className="px-8 py-5 text-right text-indigo-600 text-sm font-mono opacity-90">-{formatCurrency(metrics.yearlyEMI)}</td>
                     </tr>
-                    <tr className="bg-indigo-50 border-t border-indigo-100">
-                        <td className="p-4">
-                            <div className="font-bold text-indigo-900">Net Cash Flow</div>
-                            <div className="text-xs text-indigo-400">Actual profit in hand after loan</div>
+                    <tr className="bg-slate-900 text-white">
+                        <td className="px-8 py-6">
+                            <div className="font-bold text-sm uppercase tracking-wide">Net Cash Flow</div>
+                            <div className="text-[10px] text-slate-400 font-medium mt-1">Free Cash Flow after Debt Service</div>
                         </td>
-                        <td className="p-4 text-right font-bold text-indigo-900">{formatCurrency(metrics.monthlyCashFlow / 30)}</td>
-                        <td className="p-4 text-right font-bold text-indigo-900">{formatCurrency(metrics.monthlyCashFlow)}</td>
-                        <td className="p-4 text-right font-bold text-indigo-900">{formatCurrency(metrics.yearlyCashFlow)}</td>
+                        <td className="px-8 py-6 text-right font-bold font-mono">{formatCurrency(metrics.monthlyCashFlow / 30)}</td>
+                        <td className="px-8 py-6 text-right font-bold font-mono">{formatCurrency(metrics.monthlyCashFlow)}</td>
+                        <td className="px-8 py-6 text-right font-bold font-mono">{formatCurrency(metrics.yearlyCashFlow)}</td>
                     </tr>
                 </>
             )}
