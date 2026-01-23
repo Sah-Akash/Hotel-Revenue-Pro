@@ -46,6 +46,10 @@ export interface InputState {
   loanAmount: number;
   interestRate: number;
   loanTermYears: number;
+  // Amenities / Classification
+  hasKitchen: boolean;
+  hasRestaurant: boolean;
+  hasGym: boolean;
 }
 
 export interface MetricSummary {

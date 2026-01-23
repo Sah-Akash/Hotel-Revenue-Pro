@@ -35,6 +35,9 @@ const INITIAL_INPUTS: InputState = {
   loanAmount: 0,
   interestRate: 0,
   loanTermYears: 0,
+  hasKitchen: false,
+  hasRestaurant: false,
+  hasGym: false,
 };
 
 const DEFAULT_SETTINGS: AppSettings = {

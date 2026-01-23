@@ -7,6 +7,14 @@ interface Props {
 }
 
 const PrintableInputSummary: React.FC<Props> = ({ inputs }) => {
+  // Logic to determine category for print
+  const getCategoryName = () => {
+      if (inputs.hasGym && inputs.hasRestaurant && inputs.hasKitchen) return "Palette";
+      if (inputs.hasRestaurant && inputs.hasKitchen) return "Townhouse (OTH)";
+      if (inputs.hasKitchen) return "Collection O";
+      return "Flagship";
+  };
+
   return (
     <div className="mb-8 hidden" id="printable-summary">
       <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -21,22 +29,26 @@ const PrintableInputSummary: React.FC<Props> = ({ inputs }) => {
         </div>
         
         <div className="bg-white">
-            <div className="grid grid-cols-4 divide-x divide-slate-100 border-b border-slate-100">
+            <div className="grid grid-cols-5 divide-x divide-slate-100 border-b border-slate-100">
+                <div className="p-5">
+                    <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Category</div>
+                    <div className="text-xl font-bold text-slate-900">{getCategoryName()}</div>
+                </div>
                 <div className="p-5">
                     <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Total Inventory</div>
-                    <div className="text-2xl font-bold text-slate-900">{inputs.totalRooms} <span className="text-sm font-medium text-slate-400">Rooms</span></div>
+                    <div className="text-xl font-bold text-slate-900">{inputs.totalRooms} <span className="text-sm font-medium text-slate-400">Rooms</span></div>
                 </div>
                 <div className="p-5">
                     <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Occupancy Rate</div>
-                    <div className="text-2xl font-bold text-slate-900">{inputs.occupancyPercent}%</div>
+                    <div className="text-xl font-bold text-slate-900">{inputs.occupancyPercent}%</div>
                 </div>
                 <div className="p-5">
                     <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Avg. Room Rate (ARR)</div>
-                    <div className="text-2xl font-bold text-slate-900">{formatCurrency(inputs.roomPrice)}</div>
+                    <div className="text-xl font-bold text-slate-900">{formatCurrency(inputs.roomPrice)}</div>
                 </div>
                 <div className="p-5">
                     <div className="text-[10px] text-slate-400 uppercase tracking-widest font-semibold mb-2">Ops Cost / Room</div>
-                    <div className="text-2xl font-bold text-slate-900">₹{inputs.maintenanceCostPerRoom} <span className="text-xs font-medium text-slate-400">/ day</span></div>
+                    <div className="text-xl font-bold text-slate-900">₹{inputs.maintenanceCostPerRoom} <span className="text-xs font-medium text-slate-400">/ day</span></div>
                 </div>
             </div>
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { InputState, ExtraDeduction } from '../types';
 import { OCCUPANCY_PRESETS, ROOM_PRESETS, PRICE_PRESETS, DEFAULT_LOAN_INTEREST, DEFAULT_LOAN_TERM, DEFAULT_PROPERTY_VALUE } from '../constants';
-import { Users, BedDouble, IndianRupee, MinusCircle, Plus, Trash2, Wrench, Coins, Landmark, CalendarClock, ChevronDown } from 'lucide-react';
+import { Users, BedDouble, IndianRupee, MinusCircle, Plus, Trash2, Wrench, Coins, Landmark, CalendarClock, ChevronDown, Utensils, Dumbbell, ChefHat, Tag } from 'lucide-react';
 import { formatCurrency } from '../utils';
 
 interface Props {
@@ -66,6 +66,42 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
       onChange({ ...inputs, ...updates });
   }
 
+  // Detect Property Category
+  const getCategory = () => {
+    // Room + Reception + Kitchen + Restaurant + Gym -> Palette
+    if (inputs.hasGym && inputs.hasRestaurant && inputs.hasKitchen) {
+        return { 
+            label: "Palette", 
+            description: "Premium Resort Category", 
+            color: "bg-purple-100 text-purple-700 border-purple-200" 
+        };
+    }
+    // Room + Reception + Kitchen + Restaurant -> OTH
+    if (inputs.hasRestaurant && inputs.hasKitchen) {
+        return { 
+            label: "Townhouse (OTH)", 
+            description: "Mid-scale Premium", 
+            color: "bg-rose-100 text-rose-700 border-rose-200" 
+        };
+    }
+    // Room + Reception + Kitchen -> Collection O
+    if (inputs.hasKitchen) {
+        return { 
+            label: "Collection O", 
+            description: "Business & Leisure", 
+            color: "bg-amber-100 text-amber-700 border-amber-200" 
+        };
+    }
+    // Room + Reception -> Flagship (Default)
+    return { 
+        label: "Flagship", 
+        description: "Budget Friendly", 
+        color: "bg-blue-100 text-blue-700 border-blue-200" 
+    };
+  };
+
+  const category = getCategory();
+
   return (
     <div className="mb-12 print:hidden space-y-8">
       
@@ -79,6 +115,79 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
             className="w-full text-4xl md:text-5xl font-extrabold text-slate-900 bg-transparent border-none placeholder:text-slate-300 focus:ring-0 px-0 transition-colors tracking-tight"
          />
          <div className="h-1 w-20 bg-blue-600 rounded-full mt-4 group-focus-within:w-full transition-all duration-500 ease-out opacity-20 group-focus-within:opacity-100"></div>
+      </div>
+
+      {/* Property Classification Section */}
+      <div className="bg-white p-6 rounded-3xl shadow-card border border-slate-100">
+        <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-slate-50 text-slate-600 rounded-lg">
+                <Tag className="w-5 h-5" />
+            </div>
+            <div>
+                <h3 className="font-bold text-slate-800">Property Category</h3>
+                <p className="text-xs text-slate-400">Select available amenities to determine brand tier</p>
+            </div>
+        </div>
+        
+        <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-1 w-full space-y-3">
+                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${inputs.hasKitchen ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${inputs.hasKitchen ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                        {inputs.hasKitchen && <div className="w-2 h-2 bg-white rounded-sm"></div>}
+                    </div>
+                    <input 
+                        type="checkbox" 
+                        checked={inputs.hasKitchen} 
+                        onChange={(e) => handleChange('hasKitchen', e.target.checked)} 
+                        className="hidden" 
+                    />
+                    <div className="flex items-center gap-2">
+                        <ChefHat className={`w-4 h-4 ${inputs.hasKitchen ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <span className={`font-medium ${inputs.hasKitchen ? 'text-blue-800' : 'text-slate-600'}`}>Kitchen</span>
+                    </div>
+                 </label>
+
+                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${inputs.hasRestaurant ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${inputs.hasRestaurant ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                         {inputs.hasRestaurant && <div className="w-2 h-2 bg-white rounded-sm"></div>}
+                    </div>
+                    <input 
+                        type="checkbox" 
+                        checked={inputs.hasRestaurant} 
+                        onChange={(e) => handleChange('hasRestaurant', e.target.checked)} 
+                        className="hidden" 
+                    />
+                    <div className="flex items-center gap-2">
+                        <Utensils className={`w-4 h-4 ${inputs.hasRestaurant ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <span className={`font-medium ${inputs.hasRestaurant ? 'text-blue-800' : 'text-slate-600'}`}>Restaurant / AC Dining</span>
+                    </div>
+                 </label>
+
+                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${inputs.hasGym ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${inputs.hasGym ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
+                         {inputs.hasGym && <div className="w-2 h-2 bg-white rounded-sm"></div>}
+                    </div>
+                    <input 
+                        type="checkbox" 
+                        checked={inputs.hasGym} 
+                        onChange={(e) => handleChange('hasGym', e.target.checked)} 
+                        className="hidden" 
+                    />
+                    <div className="flex items-center gap-2">
+                        <Dumbbell className={`w-4 h-4 ${inputs.hasGym ? 'text-blue-600' : 'text-slate-400'}`} />
+                        <span className={`font-medium ${inputs.hasGym ? 'text-blue-800' : 'text-slate-600'}`}>Gym / Entertainment</span>
+                    </div>
+                 </label>
+            </div>
+            
+            <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center self-stretch">
+                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Detected Category</div>
+                 <div className={`text-2xl font-extrabold px-6 py-3 rounded-2xl border-2 mb-2 transition-all duration-300 transform shadow-sm ${category.color}`}>
+                    {category.label}
+                 </div>
+                 <div className="text-sm text-slate-500 font-medium">{category.description}</div>
+            </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
