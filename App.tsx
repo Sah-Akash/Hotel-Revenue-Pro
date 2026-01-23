@@ -43,7 +43,8 @@ const INITIAL_INPUTS: InputState = {
   otaPercent: DEAL_OTA_RATE,
   monthlyMg: 0,
   securityDeposit: 0,
-  businessAdvance: 0
+  businessAdvance: 0,
+  dealType: 'owner'
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -233,7 +234,8 @@ const App: React.FC = () => {
     // Ensure new fields exist for legacy projects
     setInputs({
         ...INITIAL_INPUTS,
-        ...project.inputs
+        ...project.inputs,
+        dealType: project.inputs.dealType || 'owner' // Fallback for legacy
     });
     setCurrentId(project.id);
     setView('editor');
@@ -259,6 +261,7 @@ const App: React.FC = () => {
       ['Report Date', new Date().toLocaleDateString()],
       [],
       ['--- DEAL METRICS ---'],
+      ['Deal Type', inputs.dealType.toUpperCase()],
       ['SRNs', metrics.srn],
       ['Assumed ARR', inputs.roomPrice],
       ['Assumed OCC%', `${inputs.occupancyPercent}%`],

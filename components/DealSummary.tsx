@@ -61,7 +61,7 @@ const DealSummary: React.FC<Props> = ({ metrics, inputs }) => {
                 </tr>
                 <tr>
                     <td className="px-6 py-2.5 font-bold text-slate-800 border-r border-slate-100">Deal</td>
-                    <td className="px-6 py-2.5 text-center font-bold text-slate-800">{inputs.monthlyMg > 0 ? "Owner" : "Revenue Share"}</td>
+                    <td className="px-6 py-2.5 text-center font-bold text-slate-800 capitalize">{inputs.dealType}</td>
                 </tr>
                 <tr>
                     <td className="px-6 py-2.5 font-bold text-slate-800 border-r border-slate-100">SRNs</td>

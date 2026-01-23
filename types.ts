@@ -70,6 +70,7 @@ export interface InputState {
   monthlyMg: number;
   securityDeposit: number;
   businessAdvance: number;
+  dealType: 'owner' | 'lessee';
 }
 
 export interface MetricSummary {
