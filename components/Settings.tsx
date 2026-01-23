@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AppSettings } from '../types';
-import { useAuth } from '../contexts/AuthContext';
-import { Save, User, Coins, Percent, ShieldCheck } from 'lucide-react';
+import { Save, Coins, Percent } from 'lucide-react';
 
 interface Props {
   settings: AppSettings;
@@ -9,7 +8,6 @@ interface Props {
 }
 
 const Settings: React.FC<Props> = ({ settings, onSave }) => {
-  const { user } = useAuth();
   const [localSettings, setLocalSettings] = useState<AppSettings>(settings);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -30,44 +28,6 @@ const Settings: React.FC<Props> = ({ settings, onSave }) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* User Profile Settings */}
-            <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="bg-blue-50 p-2 rounded-lg text-blue-600">
-                        <User className="w-5 h-5" />
-                    </div>
-                    <h2 className="text-xl font-bold text-slate-800">User Profile</h2>
-                </div>
-                
-                {user ? (
-                    <div className="flex items-start gap-6">
-                        {user.photoURL && (
-                            <img src={user.photoURL} alt="Profile" className="w-16 h-16 rounded-full border-2 border-slate-100" />
-                        )}
-                        <div className="flex-1 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-500 mb-1">Full Name</label>
-                                    <div className="text-slate-800 font-medium">{user.displayName}</div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-500 mb-1">Email Address</label>
-                                    <div className="text-slate-800 font-medium">{user.email}</div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg w-fit">
-                                <ShieldCheck className="w-3 h-3" />
-                                <span>Account secured by Google Authentication</span>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="bg-slate-50 p-4 rounded-lg text-slate-500 text-sm">
-                        Sign in to view your profile details.
-                    </div>
-                )}
-            </div>
-
             {/* Application Defaults */}
             <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm">
                 <div className="flex items-center gap-3 mb-6">

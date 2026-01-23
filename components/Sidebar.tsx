@@ -1,7 +1,7 @@
 import React from 'react';
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, PieChart, Settings, HelpCircle, LogOut, Building2, X, LogIn, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, PieChart, Settings, HelpCircle, LogOut, Building2, X, ChevronRight, User } from 'lucide-react';
 
 interface Props {
   currentView: ViewType;
@@ -50,7 +50,7 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
               </div>
               <div>
                 <span className="font-bold text-white tracking-tight block leading-none">RevenuePro</span>
-                <span className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Hotel Analytics</span>
+                <span className="text--[10px] font-medium text-slate-500 uppercase tracking-widest">Hotel Analytics</span>
               </div>
             </div>
             <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white transition-colors">
@@ -116,13 +116,10 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
                     </button>
                 </div>
              ) : (
-                <button 
-                    onClick={() => onChangeView('login')}
-                    className="w-full bg-slate-800 hover:bg-slate-700 hover:text-white text-slate-300 border border-slate-700 rounded-xl p-3.5 flex items-center justify-center gap-2 transition-all text-sm font-medium shadow-lg"
-                >
-                    <LogIn className="w-4 h-4" />
-                    Sign In
-                </button>
+                <div className="w-full bg-slate-800/50 text-slate-400 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-center gap-2 text-sm font-medium cursor-default">
+                    <User className="w-4 h-4" />
+                    Guest Mode
+                </div>
              )}
 
              {/* Credits */}
