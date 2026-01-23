@@ -18,7 +18,7 @@ export interface CalculationMetrics {
   dailyExtra: number;
   monthlyExtra: number;
   yearlyExtra: number;
-  dailyNet: number; // This is effectively NOI
+  dailyNet: number; 
   monthlyNet: number;
   yearlyNet: number;
   // Financials
@@ -26,10 +26,24 @@ export interface CalculationMetrics {
   yearlyEMI: number;
   monthlyCashFlow: number;
   yearlyCashFlow: number;
-  dscr: number; // Debt Service Coverage Ratio
-  roi: number; // Cash on Cash Return
-  valuation: number; // Estimated Property Valuation
-  paybackPeriod: number; // Years
+  dscr: number; 
+  roi: number; 
+  valuation: number; 
+  paybackPeriod: number; 
+  
+  // Deal Sheet Specific Metrics (Matching Image)
+  dealMonthlyGst: number;
+  dealRevenueNetGst: number; 
+  dealOtaAbs: number;
+  dealOpexAbs: number;
+  dealAbsoluteCm: number;
+  dealCmPercent: number;
+  dealPbpPercent: number;
+  dealMgImpactSixMonths: number;
+  breakEvenOccupancyDeal: number;
+  arrSensitivity: number;
+  monthlyMg: number;
+  operatorProfit: number;
 }
 
 export interface InputState {
@@ -39,7 +53,7 @@ export interface InputState {
   roomPrice: number;
   roundSRN: boolean;
   extraDeductions: ExtraDeduction[];
-  maintenanceCostPerRoom: number;
+  maintenanceCostPerRoom: number; // Acts as Opex per URN
   // Financials
   includeFinancials: boolean;
   propertyValue: number;
@@ -50,6 +64,12 @@ export interface InputState {
   hasKitchen: boolean;
   hasRestaurant: boolean;
   hasGym: boolean;
+  
+  // New Deal Specific Inputs
+  otaPercent: number;
+  monthlyMg: number;
+  securityDeposit: number;
+  businessAdvance: number;
 }
 
 export interface MetricSummary {
@@ -61,7 +81,7 @@ export interface MetricSummary {
 
 export interface SavedProject {
     id: string;
-    userId?: string; // Add owner ID for cloud sync
+    userId?: string;
     lastModified: number;
     inputs: InputState;
     summary: MetricSummary;
