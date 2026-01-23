@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -14,14 +14,18 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// We use a try-catch to prevent crashing if config is missing during development
 let app;
 let auth;
 let db;
 let googleProvider;
 
 try {
-  app = initializeApp(firebaseConfig);
+  // Use modular check to prevent re-initialization
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
   auth = getAuth(app);
   db = getFirestore(app);
   googleProvider = new GoogleAuthProvider();

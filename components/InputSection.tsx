@@ -22,213 +22,146 @@ const InputSection: React.FC<Props> = ({ inputs, onChange, isOwnerView }) => {
 
   // Detect Property Category
   const getCategory = () => {
-    // Room + Reception + Kitchen + Restaurant + Gym -> Palette
     if (inputs.hasGym && inputs.hasRestaurant && inputs.hasKitchen) {
-        return { 
-            label: "Palette", 
-            description: "Premium Resort Category", 
-            color: "bg-purple-100 text-purple-700 border-purple-200" 
-        };
+        return { label: "Palette", color: "bg-purple-100 text-purple-700 border-purple-200" };
     }
-    // Room + Reception + Kitchen + Restaurant -> OTH
     if (inputs.hasRestaurant && inputs.hasKitchen) {
-        return { 
-            label: "Townhouse (OTH)", 
-            description: "Mid-scale Premium", 
-            color: "bg-rose-100 text-rose-700 border-rose-200" 
-        };
+        return { label: "Townhouse", color: "bg-rose-100 text-rose-700 border-rose-200" };
     }
-    // Room + Reception + Kitchen -> Collection O
     if (inputs.hasKitchen) {
-        return { 
-            label: "Collection O", 
-            description: "Business & Leisure", 
-            color: "bg-amber-100 text-amber-700 border-amber-200" 
-        };
+        return { label: "Collection O", color: "bg-amber-100 text-amber-700 border-amber-200" };
     }
-    // Room + Reception -> Flagship (Default)
-    return { 
-        label: "Flagship", 
-        description: "Budget Friendly", 
-        color: "bg-blue-100 text-blue-700 border-blue-200" 
-    };
+    return { label: "Flagship", color: "bg-blue-100 text-blue-700 border-blue-200" };
   };
 
   const category = getCategory();
 
   return (
-    <div className="mb-12 print:hidden space-y-8">
+    <div className="space-y-8 font-sans">
       
-      {/* Hotel Name Input */}
-      <div className="group relative">
-         <input
-            type="text"
-            value={inputs.hotelName}
-            onChange={(e) => handleChange('hotelName', e.target.value)}
-            placeholder="Property Name (e.g. Grand Plaza)"
-            className="w-full text-4xl md:text-5xl font-extrabold text-slate-900 bg-transparent border-none placeholder:text-slate-300 focus:ring-0 px-0 transition-colors tracking-tight"
-         />
-         <div className="h-1 w-20 bg-blue-600 rounded-full mt-4 group-focus-within:w-full transition-all duration-500 ease-out opacity-20 group-focus-within:opacity-100"></div>
+      {/* Property Identity */}
+      <div className="space-y-4">
+         <div className="relative">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5 block">Property Name</label>
+            <input
+                type="text"
+                value={inputs.hotelName}
+                onChange={(e) => handleChange('hotelName', e.target.value)}
+                placeholder="e.g. Grand Plaza"
+                className="w-full text-lg font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
+            />
+         </div>
       </div>
 
-      {/* Property Classification Section */}
-      <div className="bg-white p-6 rounded-3xl shadow-card border border-slate-100">
-        <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-slate-50 text-slate-600 rounded-lg">
-                <Tag className="w-5 h-5" />
-            </div>
-            <div>
-                <h3 className="font-bold text-slate-800">Property Category</h3>
-                <p className="text-xs text-slate-400">Select available amenities to determine brand tier</p>
-            </div>
-        </div>
+      {/* Core Metrics */}
+      <div className="space-y-6">
         
-        <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="flex-1 w-full space-y-3">
-                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${inputs.hasKitchen ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                    <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${inputs.hasKitchen ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
-                        {inputs.hasKitchen && <div className="w-2 h-2 bg-white rounded-sm"></div>}
-                    </div>
-                    <input type="checkbox" checked={inputs.hasKitchen} onChange={(e) => handleChange('hasKitchen', e.target.checked)} className="hidden" />
-                    <div className="flex items-center gap-2"><ChefHat className="w-4 h-4 text-slate-400" /><span className="text-slate-600 font-medium">Kitchen</span></div>
-                 </label>
-                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${inputs.hasRestaurant ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${inputs.hasRestaurant ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
-                         {inputs.hasRestaurant && <div className="w-2 h-2 bg-white rounded-sm"></div>}
-                    </div>
-                    <input type="checkbox" checked={inputs.hasRestaurant} onChange={(e) => handleChange('hasRestaurant', e.target.checked)} className="hidden" />
-                    <div className="flex items-center gap-2"><Utensils className="w-4 h-4 text-slate-400" /><span className="text-slate-600 font-medium">Restaurant / AC Dining</span></div>
-                 </label>
-                 <label className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all ${inputs.hasGym ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
-                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${inputs.hasGym ? 'bg-blue-600 border-blue-600' : 'bg-white border-slate-300'}`}>
-                         {inputs.hasGym && <div className="w-2 h-2 bg-white rounded-sm"></div>}
-                    </div>
-                    <input type="checkbox" checked={inputs.hasGym} onChange={(e) => handleChange('hasGym', e.target.checked)} className="hidden" />
-                    <div className="flex items-center gap-2"><Dumbbell className="w-4 h-4 text-slate-400" /><span className="text-slate-600 font-medium">Gym / Entertainment</span></div>
-                 </label>
-            </div>
-            
-            <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-100 text-center self-stretch">
-                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Detected Category</div>
-                 <div className={`text-2xl font-extrabold px-6 py-3 rounded-2xl border-2 mb-2 transition-all duration-300 transform shadow-sm ${category.color}`}>{category.label}</div>
-                 <div className="text-sm text-slate-500 font-medium">{category.description}</div>
-            </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Total Rooms */}
-        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
-          <div className="flex justify-between items-center mb-6">
-             <div className="flex items-center gap-3"><div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><BedDouble className="w-5 h-5" /></div><span className="text-sm font-bold text-slate-500 uppercase tracking-wide">SRNs (Rooms)</span></div>
-             <div className="text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded text-xs">{inputs.totalRooms} keys</div>
-          </div>
-          <div className="relative mb-6"><input type="number" min="0" value={inputs.totalRooms} onChange={(e) => handleChange('totalRooms', Number(e.target.value))} onFocus={handleFocus} className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none" placeholder="0" /></div>
-          <div className="space-y-4">
-             <input type="range" min="1" max="100" value={inputs.totalRooms} onChange={(e) => handleChange('totalRooms', Number(e.target.value))} className="w-full accent-blue-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer" />
-             <div className="flex flex-wrap gap-2">{ROOM_PRESETS.map((val) => (<button key={val} onClick={() => handleChange('totalRooms', val)} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${inputs.totalRooms === val ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{val}</button>))}</div>
-          </div>
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm group hover:border-blue-300 transition-colors">
+            <div className="flex justify-between items-center mb-3">
+                 <div className="flex items-center gap-2 text-slate-500 font-medium text-sm"><BedDouble className="w-4 h-4" />Inventory</div>
+                 <div className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{inputs.totalRooms} Rooms</div>
+            </div>
+            <div className="flex items-end gap-2">
+                 <input type="number" value={inputs.totalRooms} onChange={(e) => handleChange('totalRooms', Number(e.target.value))} className="w-20 text-2xl font-bold text-slate-900 bg-transparent border-b-2 border-slate-100 focus:border-blue-500 outline-none p-0 pb-1" />
+                 <input type="range" min="5" max="100" value={inputs.totalRooms} onChange={(e) => handleChange('totalRooms', Number(e.target.value))} className="flex-1 accent-blue-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer mb-2" />
+            </div>
         </div>
 
         {/* Occupancy */}
-        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
-          <div className="flex justify-between items-center mb-6">
-             <div className="flex items-center gap-3"><div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><Users className="w-5 h-5" /></div><span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Assumed OCC%</span></div>
-             <div className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded text-xs">{inputs.occupancyPercent}%</div>
-          </div>
-          <div className="relative mb-6"><input type="number" min="0" max="100" value={inputs.occupancyPercent} onChange={(e) => handleChange('occupancyPercent', Number(e.target.value))} onFocus={handleFocus} className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none" placeholder="0" /></div>
-          <div className="space-y-4">
-             <input type="range" min="0" max="100" step="5" value={inputs.occupancyPercent} onChange={(e) => handleChange('occupancyPercent', Number(e.target.value))} className="w-full accent-emerald-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer" />
-             <div className="flex flex-wrap gap-2">{OCCUPANCY_PRESETS.map((val) => (<button key={val} onClick={() => handleChange('occupancyPercent', val)} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${inputs.occupancyPercent === val ? 'bg-emerald-600 text-white shadow-md shadow-emerald-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{val}%</button>))}</div>
-          </div>
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm group hover:border-emerald-300 transition-colors">
+            <div className="flex justify-between items-center mb-3">
+                 <div className="flex items-center gap-2 text-slate-500 font-medium text-sm"><Users className="w-4 h-4" />Occupancy</div>
+                 <div className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">{inputs.occupancyPercent}%</div>
+            </div>
+            <div className="flex items-end gap-2">
+                 <input type="number" value={inputs.occupancyPercent} onChange={(e) => handleChange('occupancyPercent', Number(e.target.value))} className="w-20 text-2xl font-bold text-slate-900 bg-transparent border-b-2 border-slate-100 focus:border-emerald-500 outline-none p-0 pb-1" />
+                 <input type="range" min="0" max="100" step="5" value={inputs.occupancyPercent} onChange={(e) => handleChange('occupancyPercent', Number(e.target.value))} className="flex-1 accent-emerald-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer mb-2" />
+            </div>
+             <div className="flex gap-1 mt-3 overflow-x-auto pb-1 scrollbar-hide">
+                {[40, 60, 80].map(val => (
+                    <button key={val} onClick={() => handleChange('occupancyPercent', val)} className={`px-2 py-1 text-[10px] font-bold rounded border ${inputs.occupancyPercent === val ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-slate-100 text-slate-400'}`}>{val}%</button>
+                ))}
+             </div>
         </div>
 
-        {/* Room Price */}
-        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
-          <div className="flex justify-between items-center mb-6">
-             <div className="flex items-center gap-3"><div className="p-2.5 bg-violet-50 text-violet-600 rounded-xl"><IndianRupee className="w-5 h-5" /></div><span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Assumed ARR</span></div>
-             <div className="text-violet-600 font-bold bg-violet-50 px-2 py-1 rounded text-xs">ARR</div>
-          </div>
-          <div className="relative mb-6"><span className="text-xl font-medium text-slate-300 absolute -left-4 top-2">₹</span><input type="number" min="0" value={inputs.roomPrice} onChange={(e) => handleChange('roomPrice', Number(e.target.value))} onFocus={handleFocus} className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none pl-1" placeholder="0" /></div>
-           <div className="space-y-4">
-             <input type="range" min="500" max="10000" step="100" value={inputs.roomPrice} onChange={(e) => handleChange('roomPrice', Number(e.target.value))} className="w-full accent-violet-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer" />
-             <div className="flex flex-wrap gap-2">{PRICE_PRESETS.map((val) => (<button key={val} onClick={() => handleChange('roomPrice', val)} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${inputs.roomPrice === val ? 'bg-violet-600 text-white shadow-md shadow-violet-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{formatCurrency(val)}</button>))}</div>
-          </div>
+        {/* ARR */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm group hover:border-violet-300 transition-colors">
+            <div className="flex justify-between items-center mb-3">
+                 <div className="flex items-center gap-2 text-slate-500 font-medium text-sm"><IndianRupee className="w-4 h-4" />Avg Rate (ARR)</div>
+                 <div className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md">₹{inputs.roomPrice}</div>
+            </div>
+            <div className="flex items-end gap-2">
+                 <input type="number" value={inputs.roomPrice} onChange={(e) => handleChange('roomPrice', Number(e.target.value))} className="w-24 text-2xl font-bold text-slate-900 bg-transparent border-b-2 border-slate-100 focus:border-violet-500 outline-none p-0 pb-1" />
+                 <input type="range" min="500" max="5000" step="100" value={inputs.roomPrice} onChange={(e) => handleChange('roomPrice', Number(e.target.value))} className="flex-1 accent-violet-600 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer mb-2" />
+            </div>
         </div>
 
-        {/* Maintenance Cost (Opex per URN) */}
-        <div className="bg-white p-6 rounded-3xl shadow-card hover:shadow-card-hover transition-all duration-300 border border-slate-100 group">
-          <div className="flex justify-between items-center mb-6">
-             <div className="flex items-center gap-3"><div className="p-2.5 bg-amber-50 text-amber-600 rounded-xl"><Wrench className="w-5 h-5" /></div><span className="text-sm font-bold text-slate-500 uppercase tracking-wide">Opex per URN</span></div>
-             <div className="text-amber-600 font-bold bg-amber-50 px-2 py-1 rounded text-xs">Cost</div>
-          </div>
-          <div className="relative mb-6"><span className="text-xl font-medium text-slate-300 absolute -left-4 top-2">₹</span><input type="number" min="0" value={inputs.maintenanceCostPerRoom} onChange={(e) => handleChange('maintenanceCostPerRoom', Number(e.target.value))} onFocus={handleFocus} className="w-full text-4xl font-bold text-slate-900 bg-transparent border-none p-0 focus:ring-0 outline-none pl-1" placeholder="380" /></div>
-           <div className="flex flex-wrap gap-2 mt-auto pt-4">{[200, 370, 500].map((val) => (<button key={val} onClick={() => handleChange('maintenanceCostPerRoom', val)} className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${inputs.maintenanceCostPerRoom === val ? 'bg-amber-500 text-white shadow-md shadow-amber-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>{val}</button>))}</div>
-        </div>
       </div>
 
-      {/* Deal Parameters Section */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
-        <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><Briefcase className="w-5 h-5" /></div>
-            <div>
-                <h3 className="font-bold text-slate-800">Deal Specifics</h3>
-                <p className="text-xs text-slate-400 font-medium">MG, Security Deposit & Advances</p>
-            </div>
+      {/* Deal Specifics - Sidebar Version */}
+      <div className="pt-6 border-t border-slate-100">
+        <div className="flex items-center gap-2 mb-4">
+             <Briefcase className="w-4 h-4 text-slate-400" />
+             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Deal Structure</h3>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Deal Type</label>
-                <div className="flex bg-slate-100 p-1 rounded-xl">
-                    <button
-                        onClick={() => handleChange('dealType', 'owner')}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${inputs.dealType === 'owner' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Owner
-                    </button>
-                    <button
-                        onClick={() => handleChange('dealType', 'lessee')}
-                        className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${inputs.dealType === 'lessee' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                        Lessee
-                    </button>
-                </div>
-            </div>
+        <div className="space-y-4">
+             {/* Deal Type Switcher */}
+             <div className="grid grid-cols-2 bg-slate-100 p-1 rounded-xl">
+                 <button onClick={() => handleChange('dealType', 'owner')} className={`py-1.5 text-xs font-bold rounded-lg transition-all ${inputs.dealType === 'owner' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400'}`}>Owner</button>
+                 <button onClick={() => handleChange('dealType', 'lessee')} className={`py-1.5 text-xs font-bold rounded-lg transition-all ${inputs.dealType === 'lessee' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400'}`}>Lessee</button>
+             </div>
 
-            <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">Monthly MG</label>
-                <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
-                    <input type="number" value={inputs.monthlyMg} onChange={(e) => handleChange('monthlyMg', Number(e.target.value))} onFocus={handleFocus} className="w-full pl-7 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="0" />
+             <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Monthly MG</label>
+                    <input type="number" value={inputs.monthlyMg} onChange={(e) => handleChange('monthlyMg', Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500" />
                 </div>
-            </div>
-
-            <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">SD ASK (Value)</label>
-                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
-                    <input type="number" value={inputs.securityDeposit} onChange={(e) => handleChange('securityDeposit', Number(e.target.value))} onFocus={handleFocus} className="w-full pl-7 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="0" />
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Sec. Deposit</label>
+                    <input type="number" value={inputs.securityDeposit} onChange={(e) => handleChange('securityDeposit', Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500" />
                 </div>
-            </div>
-
-            <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">BA (Value)</label>
-                 <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">₹</span>
-                    <input type="number" value={inputs.businessAdvance} onChange={(e) => handleChange('businessAdvance', Number(e.target.value))} onFocus={handleFocus} className="w-full pl-7 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="0" />
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">Bus. Advance</label>
+                    <input type="number" value={inputs.businessAdvance} onChange={(e) => handleChange('businessAdvance', Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500" />
                 </div>
-            </div>
-
-            <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wide">OTA Approx (%)</label>
-                 <div className="relative">
-                    <input type="number" value={inputs.otaPercent} onChange={(e) => handleChange('otaPercent', Number(e.target.value))} onFocus={handleFocus} className="w-full pl-4 pr-8 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" placeholder="7" />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">OTA (%)</label>
+                    <input type="number" value={inputs.otaPercent} onChange={(e) => handleChange('otaPercent', Number(e.target.value))} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-800 focus:outline-none focus:border-blue-500" />
                 </div>
-            </div>
+             </div>
         </div>
       </div>
+
+       {/* Amenities / Category */}
+       <div className="pt-6 border-t border-slate-100">
+          <div className="flex items-center gap-2 mb-4">
+             <Tag className="w-4 h-4 text-slate-400" />
+             <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide">Category & Amenities</h3>
+          </div>
+          
+          <div className="space-y-2">
+              <label className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={inputs.hasKitchen} onChange={(e) => handleChange('hasKitchen', e.target.checked)} className="w-4 h-4 accent-blue-600 rounded" />
+                  <span className="text-sm font-medium text-slate-700">Kitchen</span>
+              </label>
+               <label className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={inputs.hasRestaurant} onChange={(e) => handleChange('hasRestaurant', e.target.checked)} className="w-4 h-4 accent-blue-600 rounded" />
+                  <span className="text-sm font-medium text-slate-700">Restaurant</span>
+              </label>
+               <label className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <input type="checkbox" checked={inputs.hasGym} onChange={(e) => handleChange('hasGym', e.target.checked)} className="w-4 h-4 accent-blue-600 rounded" />
+                  <span className="text-sm font-medium text-slate-700">Gym / Spa</span>
+              </label>
+          </div>
+
+          <div className={`mt-4 p-3 rounded-xl border text-center ${category.color}`}>
+              <div className="text-[10px] uppercase font-bold tracking-widest opacity-60">Calculated Tier</div>
+              <div className="text-lg font-black tracking-tight">{category.label}</div>
+          </div>
+       </div>
+
     </div>
   );
 };

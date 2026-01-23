@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { auth, googleProvider } from '../firebase';
+import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
 import { UserProfile } from '../types';
 
 interface AuthContextType {
@@ -33,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
     }
 
+    // Use modular onAuthStateChanged
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
         setUser({
@@ -56,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error("Firebase is not configured correctly. Please check firebase.ts");
     }
     try {
+      // Use modular signInWithPopup
       await signInWithPopup(auth, googleProvider);
       setIsGuest(false);
       localStorage.removeItem('revenue_pro_is_guest');
@@ -75,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('revenue_pro_is_guest');
     if (!auth) return;
     try {
+      // Use modular signOut
       await signOut(auth);
     } catch (error) {
       console.error("Logout failed", error);
