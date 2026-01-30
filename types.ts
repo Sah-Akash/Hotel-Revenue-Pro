@@ -101,4 +101,4 @@ export interface UserProfile {
     photoURL: string | null;
 }
 
-export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'settings' | 'help' | 'login';
+export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'knowledge' | 'settings' | 'help' | 'login';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, PieChart, Settings, HelpCircle, LogOut, Building2, X, ChevronRight, User } from 'lucide-react';
+import { LayoutDashboard, PieChart, Settings, HelpCircle, LogOut, Building2, X, ChevronRight, User, BookOpen } from 'lucide-react';
 
 interface Props {
   currentView: ViewType;
@@ -16,6 +16,7 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
   const menuItems = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'analytics', label: 'Analytics', icon: PieChart },
+    { id: 'knowledge', label: 'Knowledge Base', icon: BookOpen },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'help', label: 'Support', icon: HelpCircle },
   ];

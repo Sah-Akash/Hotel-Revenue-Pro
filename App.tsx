@@ -18,6 +18,7 @@ import Sidebar from './components/Sidebar';
 import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import Login from './components/Login';
+import KnowledgeBase from './components/KnowledgeBase';
 
 import { Building2, Eye, EyeOff, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEAL_OTA_RATE } from './constants';
@@ -411,6 +412,7 @@ const App: React.FC = () => {
                 
                 {view === 'dashboard' && <Dashboard projects={savedProjects} onCreateNew={handleCreateNew} onOpen={handleOpenProject} onDelete={handleDeleteProject} />}
                 {view === 'analytics' && <Analytics projects={savedProjects} />}
+                {view === 'knowledge' && <KnowledgeBase />}
                 {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
                 {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
             </div>
