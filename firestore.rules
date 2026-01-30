@@ -1,46 +1,60 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper Functions
-    function isAdmin() {
-       return request.auth != null && request.auth.token.email == "aayansah17@gmail.com";
-    }
 
+    // --- HELPER FUNCTIONS ---
+
+    // Check if user is signed in and matches the requested User ID
     function isOwner(userId) {
        return request.auth != null && request.auth.uid == userId;
     }
 
-    // 1. PROJECTS (User Data)
+    // Check if user is Admin (via Database Doc OR Hardcoded Email)
+    function isAdmin() {
+       return request.auth != null && (
+          request.auth.token.email == "aayansah17@gmail.com" || 
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+       );
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. PROJECTS (User Saved Calculations)
+    // Critical: Without this, the main Dashboard will be empty/error out.
     match /projects/{projectId} {
-      allow create: if request.auth != null;
-      allow read, update, delete: if isOwner(resource.data.userId);
+       allow create: if request.auth != null;
+       allow read, update, delete: if isOwner(resource.data.userId);
     }
 
-    // 2. SUBSCRIPTIONS (The Source of Truth)
-    // Only Admins can WRITE subscriptions.
-    // Users can READ their own subscription.
-    match /subscriptions/{subId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      allow write: if isAdmin(); 
+    // 2. LICENSES (Access Control)
+    // Critical: Fixed "Connection Issue". Users must be able to write their own 
+    // license doc for the Client-Side Fallback to work when API fails.
+    match /licenses/{userId} {
+       // Allow user to create/read/update their OWN license
+       allow create: if isOwner(userId);
+       allow read: if isOwner(userId) || isAdmin();
+       allow update: if isOwner(userId) || isAdmin();
+       
+       // Only Admin can delete/revoke
+       allow delete: if isAdmin();
     }
 
-    // 3. LICENSES (Device Binding)
-    // Users can create a license IF they have a valid subscription (This logic is usually in API, 
-    // but here we allow creation if they are auth'd, validation happens in app/rules).
-    // Ideally, a Cloud Function creates this, but for this architecture:
-    match /licenses/{licenseId} {
-      allow read: if isOwner(resource.data.userId) || isAdmin();
-      // User can bind a device only if they are the owner
-      allow create: if isOwner(request.resource.data.userId);
-      // Only Admin can revoke or delete
-      allow update, delete: if isAdmin();
+    // 3. LICENSE LOGS (Audit Trail)
+    match /licenseLogs/{logId} {
+       allow create: if request.auth != null; // Allow client to log connection attempts
+       allow read: if isAdmin();
+    }
+
+    // 4. ADMINS COLLECTION
+    match /admins/{adminId} {
+       allow read: if isAdmin();
     }
     
-    // 4. AUDIT LOGS
-    match /audit_logs/{logId} {
-      allow create: if request.auth != null;
-      allow read: if isAdmin();
+    // 5. ACCESS REQUESTS (From AccessGate)
+    match /access_requests/{requestId} {
+       allow create: if request.auth != null;
+       allow read, update: if isAdmin();
     }
   }
 }
