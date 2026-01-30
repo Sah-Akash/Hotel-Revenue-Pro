@@ -1,11 +1,19 @@
 
 import admin from 'firebase-admin';
 
+let initError = null;
+
 // Helper to safely format private key
 const getPrivateKey = () => {
-    const key = process.env.FIREBASE_PRIVATE_KEY;
+    let key = process.env.FIREBASE_PRIVATE_KEY;
     if (!key) return null;
-    // Replace literal "\n" with actual newlines if necessary, or use as is
+    
+    // Remove surrounding quotes if user copy-pasted "..." from JSON
+    if (key.startsWith('"') && key.endsWith('"')) {
+        key = key.slice(1, -1);
+    }
+    
+    // Replace literal "\n" with actual newlines
     return key.replace(/\\n/g, '\n');
 };
 
@@ -25,10 +33,16 @@ if (!admin.apps.length) {
         });
         console.log("Firebase Admin Initialized Successfully");
     } else {
-        console.error("FIREBASE INIT FAILED: Missing Env Vars");
-        console.error("ProjectID:", !!projectId, "Email:", !!clientEmail, "Key:", !!privateKey);
+        const missing = [];
+        if(!projectId) missing.push("FIREBASE_PROJECT_ID");
+        if(!clientEmail) missing.push("FIREBASE_CLIENT_EMAIL");
+        if(!privateKey) missing.push("FIREBASE_PRIVATE_KEY");
+        
+        initError = `Missing Env Vars: ${missing.join(', ')}`;
+        console.error("FIREBASE INIT FAILED:", initError);
     }
   } catch (error) {
+    initError = `Init Exception: ${error.message}`;
     console.error("Firebase Admin Init Error:", error);
   }
 }
@@ -36,4 +50,4 @@ if (!admin.apps.length) {
 const db = admin.apps.length ? admin.firestore() : null;
 const auth = admin.apps.length ? admin.auth() : null;
 
-export { db, auth, admin };
+export { db, auth, admin, initError };

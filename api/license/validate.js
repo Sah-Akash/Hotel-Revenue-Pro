@@ -1,5 +1,5 @@
 
-import { db } from '../utils/firebaseAdmin.js';
+import { db, initError } from '../utils/firebaseAdmin.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,7 +16,11 @@ export default async function handler(req, res) {
 
   // Check if DB initialized
   if (!db) {
-      return res.status(500).json({ error: 'Database Configuration Error. Check Server Logs.' });
+      // Return the specific initialization error to help the user debug
+      console.error("DB Validation Error:", initError);
+      return res.status(500).json({ 
+          error: `Server Config Error: ${initError || 'Database not initialized'}` 
+      });
   }
 
   const { uid, deviceId } = req.body;

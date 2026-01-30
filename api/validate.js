@@ -1,21 +1,16 @@
 
-import admin from 'firebase-admin';
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-    }),
-  });
-}
-
-const db = admin.firestore();
+import { db, initError } from './utils/firebaseAdmin.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Check if DB initialized
+  if (!db) {
+    return res.status(500).json({ 
+        error: `Server Config Error: ${initError || 'Database not initialized'}` 
+    });
   }
 
   const { key, deviceId } = req.body;
