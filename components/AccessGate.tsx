@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Lock, ArrowRight, ShieldAlert, Loader2, KeyRound, User, Phone, Mail, Send, CheckCircle2, ChevronLeft } from 'lucide-react';
+import { Lock, ArrowRight, ShieldAlert, Loader2, KeyRound, User, Phone, Mail, Send, CheckCircle2, ChevronLeft, ExternalLink } from 'lucide-react';
 import { db } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 
@@ -107,7 +107,6 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
       // Try API/DB Validation first
       try {
-          // If using real backend API
           const response = await fetch('/api/validate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -126,9 +125,8 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
               throw new Error("API_UNAVAILABLE");
           }
       } catch (err: any) {
-          // Fallback to Local/Firestore check handled by component logic if API fails
+          // Fallback to Local
           if (err.message === "API_UNAVAILABLE" || err.message.includes("Failed to fetch") || err.name === 'SyntaxError') {
-              // Check Local Storage (Syncs with Admin Dashboard on same device)
               expiry = validateLocalKey(formattedKey, deviceId);
               isValid = true;
           } else {
@@ -148,6 +146,13 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const triggerMailto = () => {
+      const subject = "Request for RevenuePro Access Key";
+      const body = `Hi Admin,\n\nI request an access key.\n\nName: ${reqName}\nMobile: ${reqMobile}\nEmail: ${reqEmail}\n\nPlease verify and send the key.`;
+      const link = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = link;
   };
 
   const handleRequestSubmit = async (e: React.FormEvent) => {
@@ -175,32 +180,22 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
           status: 'pending'
       };
 
-      try {
-          // 1. Save to Database (So it shows in Admin Panel)
-          if (db) {
-             try { 
-                 await addDoc(collection(db, 'access_requests'), requestData); 
-             } catch (e) {
-                 console.error("DB Save failed", e);
-                 // We continue anyway so the email triggers
-             }
-          } else {
-              // Fallback for local testing
-              const existing = JSON.parse(localStorage.getItem('hrp_requests_local') || '[]');
-              localStorage.setItem('hrp_requests_local', JSON.stringify([requestData, ...existing]));
-          }
-          
-          // 2. Trigger Email Client (Reliable delivery)
-          const subject = "Request for RevenuePro Access Key";
-          const body = `Hi Admin,\n\nI request an access key.\n\nName: ${reqName}\nMobile: ${reqMobile}\nEmail: ${reqEmail}\n\nPlease verify and send the key.`;
-          window.location.href = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-          
-          setRequestSent(true);
-      } catch (err) {
-          setError("Failed to submit request.");
-      } finally {
-          setSendingRequest(false);
+      // 1. Save to Database (Non-blocking attempt)
+      if (db) {
+          addDoc(collection(db, 'access_requests'), requestData)
+            .then(() => console.log("Request saved to DB"))
+            .catch((err) => {
+                console.error("DB Save failed - Check Firestore Rules", err);
+                // We do NOT stop the user flow if DB fails, we still open email
+            });
       }
+
+      // 2. Trigger Email Client immediately to prevent blocking
+      setTimeout(() => {
+          triggerMailto();
+          setRequestSent(true);
+          setSendingRequest(false);
+      }, 500);
   };
 
   if (loading && !isAuthenticated) {
@@ -350,12 +345,18 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                   <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4">
                       <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-2">Email Opened!</h3>
+                  <h3 className="text-xl font-bold text-white mb-2">Check Your Email App!</h3>
                   <p className="text-slate-400 text-sm mb-6">
-                      Please <strong>send the email</strong> that just opened. <br/>
-                      The admin will review and send you a key shortly.
+                      We tried to open your email. Please <strong>send the pre-filled email</strong> to us.
                   </p>
                   
+                  <button 
+                      onClick={triggerMailto} 
+                      className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl mb-3 flex items-center justify-center gap-2"
+                  >
+                      <ExternalLink className="w-4 h-4" /> Click if Email didn't open
+                  </button>
+
                   <button 
                       onClick={() => { setMode('enter'); setRequestSent(false); }}
                       className="text-blue-400 hover:text-blue-300 font-bold text-sm"

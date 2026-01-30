@@ -117,16 +117,19 @@ const AdminDashboard: React.FC = () => {
 
   // --- REQUESTS LOGIC ---
   const fetchRequests = async () => {
-      let fetchedReqs: AccessRequest[] = [];
-      if (db) {
-          try {
-              const q = query(collection(db, 'access_requests'), orderBy('requestedAt', 'desc'));
-              const snapshot = await getDocs(q);
-              fetchedReqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AccessRequest[];
-          } catch (e) { console.warn("DB Requests fail"); }
+      if (!db) return;
+      
+      try {
+          const q = query(collection(db, 'access_requests'), orderBy('requestedAt', 'desc'));
+          const snapshot = await getDocs(q);
+          const fetchedReqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AccessRequest[];
+          setRequests(fetchedReqs);
+      } catch (e: any) { 
+          console.error("DB Requests fail", e); 
+          if(e.code === 'permission-denied') {
+             alert("Error: Permission Denied. Please ensure your Firestore Rules are set to Test Mode (Public).");
+          }
       }
-      // Note: We don't fetch local requests because user requests from other devices won't be in local storage here.
-      setRequests(fetchedReqs.sort((a,b) => b.requestedAt - a.requestedAt));
   };
 
   const deleteRequest = async (id: string) => {
@@ -193,20 +196,30 @@ const AdminDashboard: React.FC = () => {
                 )}
             </div>
             
-            <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex gap-4">
                 <button 
-                    onClick={() => setActiveTab('requests')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'requests' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}
+                    onClick={() => fetchData()}
+                    className="bg-white p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors"
+                    title="Refresh Data"
                 >
-                    <Users className="w-4 h-4" /> Requests 
-                    {requests.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{requests.length}</span>}
+                    <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
-                <button 
-                    onClick={() => setActiveTab('keys')}
-                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'keys' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}
-                >
-                    <KeyRound className="w-4 h-4" /> Active Keys
-                </button>
+                
+                <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
+                    <button 
+                        onClick={() => setActiveTab('requests')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'requests' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        <Users className="w-4 h-4" /> Requests 
+                        {requests.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{requests.length}</span>}
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('keys')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'keys' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}
+                    >
+                        <KeyRound className="w-4 h-4" /> Active Keys
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -232,7 +245,10 @@ const AdminDashboard: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {loading ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">Loading...</td></tr> : 
-                        requests.length === 0 ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">No pending requests found.</td></tr> :
+                        requests.length === 0 ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">
+                            No pending requests found.<br/>
+                            <span className="text-xs text-slate-300">If you expect requests, check Firestore Rules.</span>
+                        </td></tr> :
                         requests.map(req => (
                             <tr key={req.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4">
