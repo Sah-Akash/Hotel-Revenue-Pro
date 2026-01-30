@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { SavedProject, InputState } from '../types';
 import { 
@@ -279,6 +280,10 @@ const Dashboard: React.FC<Props> = ({ projects, onCreateNew, onOpen, onDelete })
                 <button onClick={() => setSearchTerm('')} className="text-blue-600 font-bold mt-2 hover:underline">Clear Search</button>
             </div>
         )}
+
+        <div className="mt-20 pt-8 border-t border-slate-200 text-center">
+            <p className="text-slate-400 text-sm font-medium">© {new Date().getFullYear()} All rights reserved by Akash Sah.</p>
+        </div>
 
       </div>
     </div>

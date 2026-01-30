@@ -7,7 +7,7 @@ import { db } from './firebase';
 import { collection, query, where, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
 
 // Components
-import LicenseGate from './components/LicenseGate'; // CHANGED
+import LicenseGate from './components/LicenseGate'; 
 import InputSection from './components/InputSection';
 import PrintableInputSummary from './components/PrintableInputSummary';
 import SummaryCards from './components/SummaryCards';
@@ -22,6 +22,7 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import KnowledgeBase from './components/KnowledgeBase';
 import AdminDashboard from './components/AdminDashboard'; 
+import Support from './components/Support'; // ADDED
 
 import { Building2, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEAL_OTA_RATE } from './constants';
@@ -408,7 +409,7 @@ const App: React.FC = () => {
                                 {view === 'analytics' && <Analytics projects={savedProjects} />}
                                 {view === 'knowledge' && <KnowledgeBase />}
                                 {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
-                                {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
+                                {view === 'help' && <Support />}
                             </div>
                         )
                         )}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { SavedProject } from '../types';
 import { formatCurrency, formatNumber } from '../utils';
@@ -149,6 +150,10 @@ const Analytics: React.FC<Props> = ({ projects }) => {
                  </div>
             </div>
 
+        </div>
+
+        <div className="mt-12 pt-8 border-t border-slate-200 text-center">
+            <p className="text-slate-400 text-sm font-medium">© {new Date().getFullYear()} All rights reserved by Akash Sah.</p>
         </div>
     </div>
   );
