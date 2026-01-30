@@ -327,7 +327,7 @@ const App: React.FC = () => {
             {/* Main Content Area */}
             <div className="flex-1 overflow-hidden relative">
                 
-                {view === 'editor' && (
+                {view === 'editor' ? (
                   <div className="flex flex-col h-full bg-slate-50/50">
                     
                     {/* Editor Header - Glassmorphism */}
@@ -408,13 +408,16 @@ const App: React.FC = () => {
 
                     </div>
                   </div>
+                ) : (
+                   /* Non-Editor Views need their own scroll container because parent is overflow-hidden */
+                   <div className="h-full overflow-y-auto bg-slate-50/50 scroll-smooth">
+                       {view === 'dashboard' && <Dashboard projects={savedProjects} onCreateNew={handleCreateNew} onOpen={handleOpenProject} onDelete={handleDeleteProject} />}
+                       {view === 'analytics' && <Analytics projects={savedProjects} />}
+                       {view === 'knowledge' && <KnowledgeBase />}
+                       {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
+                       {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
+                   </div>
                 )}
-                
-                {view === 'dashboard' && <Dashboard projects={savedProjects} onCreateNew={handleCreateNew} onOpen={handleOpenProject} onDelete={handleDeleteProject} />}
-                {view === 'analytics' && <Analytics projects={savedProjects} />}
-                {view === 'knowledge' && <KnowledgeBase />}
-                {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
-                {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
             </div>
         </div>
     </div>
