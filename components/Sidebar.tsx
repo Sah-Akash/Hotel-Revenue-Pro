@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,14 +9,12 @@ interface Props {
   onChangeView: (view: ViewType) => void;
   isOpen: boolean;
   onClose: () => void;
+  isAdmin: boolean;
 }
 
-const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }) => {
+const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose, isAdmin }) => {
   const { user, logout } = useAuth();
   
-  // Check if current session is Admin (Master Key)
-  const isAdmin = localStorage.getItem('hrp_access_key') === 'ADMIN123';
-
   const menuItems = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'analytics', label: 'Analytics', icon: PieChart },
@@ -29,12 +28,12 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
   }
 
   const handleLogout = async () => {
-    // Also clear access key on logout if desired, or just auth
+    // Clear admin keys on logout
     localStorage.removeItem('hrp_access_key');
     localStorage.removeItem('hrp_session_expiry');
     await logout();
     onChangeView('login');
-    window.location.reload(); // Force re-gate
+    window.location.reload(); 
   };
 
   return (

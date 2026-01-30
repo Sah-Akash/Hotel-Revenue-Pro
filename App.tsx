@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { InputState, SavedProject, MetricSummary, ViewType, AppSettings } from './types';
 import { useCalculator } from './hooks/useCalculator';
@@ -55,6 +56,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     defaultInterestRate: DEFAULT_LOAN_INTEREST
 };
 
+const ADMIN_EMAIL = "aayansah17@gmail.com";
+
 const App: React.FC = () => {
   const { user, loading: authLoading, isGuest } = useAuth();
 
@@ -63,6 +66,7 @@ const App: React.FC = () => {
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
   
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [inputs, setInputs] = useState<InputState>(INITIAL_INPUTS);
@@ -81,9 +85,6 @@ const App: React.FC = () => {
         setView('dashboard');
         fetchProjectsFromCloud(user.uid);
     } else if (isGuest) {
-        // Guest mode is now restricted in LicenseGate logic if needed, 
-        // but for now we allow the 'continueAsGuest' flow for Demo purposes 
-        // until the LicenseGate enforces no_sub
         setView('dashboard');
         loadProjectsFromLocalStorage();
     } else {
@@ -291,7 +292,10 @@ const App: React.FC = () => {
   };
 
   return (
-    <LicenseGate onAdminAccess={() => setView('admin')}>
+    <LicenseGate onAdminAccess={() => {
+        setIsAdminMode(true);
+        setView('admin');
+    }}>
         {authLoading ? (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
@@ -300,7 +304,13 @@ const App: React.FC = () => {
             <Login />
         ) : (
             <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-                <Sidebar currentView={view} onChangeView={setView} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+                <Sidebar 
+                    currentView={view} 
+                    onChangeView={setView} 
+                    isOpen={isSidebarOpen} 
+                    onClose={() => setIsSidebarOpen(false)} 
+                    isAdmin={isAdminMode || user?.email === ADMIN_EMAIL} 
+                />
                 
                 <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                     
@@ -313,7 +323,7 @@ const App: React.FC = () => {
                     {/* Main Content Area */}
                     <div className="flex-1 overflow-hidden relative">
                         
-                        {view === 'admin' && (
+                        {view === 'admin' && (isAdminMode || user?.email === ADMIN_EMAIL) && (
                             <div className="h-full overflow-y-auto bg-slate-50/50">
                                 <AdminDashboard />
                             </div>

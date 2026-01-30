@@ -23,23 +23,32 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   useEffect(() => {
     if (authLoading) return;
     
-    // 1. Check for Manual Admin Key override (Backdoor)
     const adminKey = localStorage.getItem('hrp_access_key');
-    if (adminKey === 'ADMIN123') {
-        onAdminAccess();
-        return;
+
+    // 1. ADMIN BYPASS LOGIC
+    if (user) {
+        // If logged in as Admin Email -> GRANT ACCESS
+        if (user.email === ADMIN_EMAIL) {
+            localStorage.setItem('hrp_access_key', 'ADMIN123');
+            onAdminAccess();
+            return;
+        } 
+        // If logged in as NON-Admin, but has key -> REVOKE KEY (Security Fix)
+        else if (adminKey === 'ADMIN123') {
+            console.warn("Cleared stale admin session for non-admin user");
+            localStorage.removeItem('hrp_access_key');
+        }
+    } else {
+        // If NOT logged in (Manual Backdoor) -> Check Key
+        if (adminKey === 'ADMIN123') {
+            onAdminAccess();
+            return;
+        }
     }
 
     if (!user) {
         setLicenseState('checking'); 
         return;
-    }
-
-    // 2. Check for Admin Email
-    if (user.email === ADMIN_EMAIL) {
-        localStorage.setItem('hrp_access_key', 'ADMIN123'); // Persist admin session
-        onAdminAccess();
-        return; 
     }
 
     validateLicense();
@@ -81,9 +90,14 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   // --- RENDER STATES ---
 
   if (authLoading || licenseState === 'checking') {
+      // Allow render if already flagged as admin (prevents flicker)
       if (localStorage.getItem('hrp_access_key') === 'ADMIN123') return <>{children}</>;
-      if (!user) return <>{children}</>; 
-      if (user.email === ADMIN_EMAIL) return <>{children}</>;
+      
+      // If user is admin email, allow immediate render
+      if (user?.email === ADMIN_EMAIL) return <>{children}</>;
+
+      // Don't block if not logged in (handled by App routing usually, but here checking)
+      if (!user) return <>{children}</>;
 
       return (
           <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
