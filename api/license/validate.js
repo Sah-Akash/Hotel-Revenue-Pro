@@ -2,7 +2,6 @@
 import { db } from '../utils/firebaseAdmin.js';
 
 export default async function handler(req, res) {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -15,6 +14,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  // Check if DB initialized
+  if (!db) {
+      return res.status(500).json({ error: 'Database Configuration Error. Check Server Logs.' });
+  }
+
   const { uid, deviceId } = req.body;
 
   if (!uid || !deviceId) {
@@ -25,9 +29,25 @@ export default async function handler(req, res) {
     const licenseRef = db.collection('licenses').doc(uid);
     const licenseDoc = await licenseRef.get();
 
-    // 1. Check if License Exists
+    // 1. Check if License Exists - If NOT, Create TRIAL
     if (!licenseDoc.exists) {
-      return res.status(200).json({ allowed: false, reason: 'no_subscription' });
+        const now = Date.now();
+        const trialData = {
+            userId: uid,
+            planId: 'trial',
+            status: 'trial',
+            startedAt: now,
+            expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7 Days
+            deviceId: deviceId, // Auto-bind first device
+            deviceHistory: [{ id: deviceId, date: now }],
+            isRevoked: false,
+            lastCheckedAt: now
+        };
+        
+        await licenseRef.set(trialData);
+        await logAttempt(uid, deviceId, 'created_trial');
+        
+        return res.status(200).json({ allowed: true, license: trialData });
     }
 
     const data = licenseDoc.data();
@@ -46,16 +66,12 @@ export default async function handler(req, res) {
     let currentBoundDevice = data.deviceId;
 
     if (!currentBoundDevice) {
-      // First time login on a device: BIND IT
       await licenseRef.update({ 
         deviceId: deviceId,
         lastCheckedAt: Date.now(),
         deviceHistory: ((data.deviceHistory || []).concat([{ id: deviceId, date: Date.now() }]))
       });
-      
-      // Log Success
       await logAttempt(uid, deviceId, 'bound_new_device');
-      
       return res.status(200).json({ 
         allowed: true, 
         license: { ...data, deviceId: deviceId } 
@@ -68,7 +84,7 @@ export default async function handler(req, res) {
        return res.status(200).json({ 
          allowed: false, 
          reason: 'device_mismatch',
-         boundTo: currentBoundDevice // Optional: don't show full hash in prod
+         boundTo: currentBoundDevice
        });
     }
 
@@ -78,17 +94,19 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error("Validation Error", error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 }
 
 async function logAttempt(userId, deviceId, result) {
     try {
-        await db.collection('licenseLogs').add({
-            userId,
-            deviceId,
-            result,
-            timestamp: Date.now()
-        });
+        if(db) {
+            await db.collection('licenseLogs').add({
+                userId,
+                deviceId,
+                result,
+                timestamp: Date.now()
+            });
+        }
     } catch(e) { console.error("Logging failed", e); }
 }

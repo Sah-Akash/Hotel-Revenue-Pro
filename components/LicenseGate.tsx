@@ -28,6 +28,9 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
     if (user.email === ADMIN_EMAIL) {
         onAdminAccess();
+        // Admin always authorized, but we still run validation in background to ensure DB record exists?
+        // For now, let's just let them in.
+        return; 
     }
 
     validateLicense();
@@ -48,6 +51,9 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
             setLicenseState('authorized');
         } else {
             setLicenseState(result.reason as LicenseState || 'error');
+            if (result.details) {
+                setErrorMessage(result.details);
+            }
         }
 
     } catch (err: any) {
@@ -139,8 +145,9 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                             Could not communicate with the authentication server.
                         </p>
                         {errorMessage && (
-                            <div className="bg-slate-950 border border-slate-800 p-3 rounded-lg mb-6 text-left">
-                                <p className="text-xs font-mono text-red-400 break-words">{errorMessage}</p>
+                            <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg mb-6 text-left overflow-auto max-h-32">
+                                <p className="text-[10px] font-bold text-red-500 uppercase mb-1">Error Details:</p>
+                                <p className="text-xs font-mono text-red-300 break-words leading-relaxed">{errorMessage}</p>
                             </div>
                         )}
                         <button 
