@@ -6,6 +6,7 @@ import { db } from './firebase';
 import { collection, query, where, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
 
 // Components
+import AccessGate from './components/AccessGate';
 import InputSection from './components/InputSection';
 import PrintableInputSummary from './components/PrintableInputSummary';
 import SummaryCards from './components/SummaryCards';
@@ -94,7 +95,7 @@ const App: React.FC = () => {
     }
   }, [user, authLoading, isGuest]);
 
-  // Load Settings from LocalStorage (User preferences are usually local-first)
+  // Load Settings from LocalStorage
   useEffect(() => {
     const storedSettings = localStorage.getItem('hotel_revenue_pro_settings');
     if (storedSettings) {
@@ -107,7 +108,6 @@ const App: React.FC = () => {
   }, []);
 
   // --- DATA SYNC FUNCTIONS ---
-
   const loadProjectsFromLocalStorage = () => {
       const stored = localStorage.getItem('hotel_revenue_pro_projects');
       if (stored) {
@@ -162,7 +162,6 @@ const App: React.FC = () => {
   };
 
   // --- HANDLERS ---
-
   const handleSaveSettings = (newSettings: AppSettings) => {
       setAppSettings(newSettings);
       localStorage.setItem('hotel_revenue_pro_settings', JSON.stringify(newSettings));
@@ -180,10 +179,9 @@ const App: React.FC = () => {
     let projectToSave: SavedProject;
 
     if (currentId) {
-        // Update existing
         const existing = savedProjects.find(p => p.id === currentId);
         projectToSave = { 
-            ...(existing || {}), // keep existing props
+            ...(existing || {}),
             id: currentId,
             userId: user?.uid || 'guest',
             lastModified: now,
@@ -193,7 +191,6 @@ const App: React.FC = () => {
 
         setSavedProjects(prev => prev.map(p => p.id === currentId ? projectToSave : p));
     } else {
-        // Create new
         const newId = crypto.randomUUID();
         projectToSave = {
             id: newId,
@@ -206,17 +203,12 @@ const App: React.FC = () => {
         setCurrentId(newId);
     }
 
-    // Persist
-    // 1. Local (Optimistic UI & Guest Mode)
     const currentProjects = currentId 
         ? savedProjects.map(p => p.id === currentId ? projectToSave : p)
         : [projectToSave, ...savedProjects];
     localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(currentProjects));
     
-    // 2. Cloud (Only if logged in)
-    if (user) {
-        await saveProjectToCloud(projectToSave);
-    }
+    if (user) await saveProjectToCloud(projectToSave);
 
     setLastSavedTime(now);
     setTimeout(() => setLastSavedTime(null), 2000);
@@ -233,11 +225,10 @@ const App: React.FC = () => {
   };
 
   const handleOpenProject = (project: SavedProject) => {
-    // Ensure new fields exist for legacy projects
     setInputs({
         ...INITIAL_INPUTS,
         ...project.inputs,
-        dealType: project.inputs.dealType || 'owner' // Fallback for legacy
+        dealType: project.inputs.dealType || 'owner'
     });
     setCurrentId(project.id);
     setView('editor');
@@ -250,10 +241,7 @@ const App: React.FC = () => {
         const updated = savedProjects.filter(p => p.id !== id);
         setSavedProjects(updated);
         localStorage.setItem('hotel_revenue_pro_projects', JSON.stringify(updated));
-        
-        if (user) {
-            await deleteProjectFromCloud(id);
-        }
+        if (user) await deleteProjectFromCloud(id);
     }
   };
 
@@ -309,118 +297,116 @@ const App: React.FC = () => {
     }
   };
 
-  if (authLoading) return <div className="min-h-screen bg-slate-900 flex items-center justify-center"><Loader2 className="w-10 h-10 text-blue-500 animate-spin" /></div>;
-  if (view === 'login') return <Login />;
-
+  // WRAP CONTENT IN ACCESS GATE
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
-        <Sidebar currentView={view} onChangeView={setView} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-        
-        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-            
-            {/* Mobile Header */}
-            <div className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 shrink-0 z-40">
-                <div className="flex items-center gap-2 font-bold text-slate-800"><Building2 className="w-5 h-5 text-blue-600" />RevenuePro</div>
-                <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600"><Menu className="w-6 h-6" /></button>
+    <AccessGate>
+        {authLoading ? (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
             </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 overflow-hidden relative">
+        ) : view === 'login' ? (
+            <Login />
+        ) : (
+            <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+                <Sidebar currentView={view} onChangeView={setView} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
                 
-                {view === 'editor' ? (
-                  <div className="flex flex-col h-full bg-slate-50/50">
+                <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                     
-                    {/* Editor Header - Glassmorphism */}
-                    <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shrink-0">
-                        <div className="w-full px-6 h-16 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <button onClick={() => setView('dashboard')} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors"><ArrowLeft className="w-5 h-5" /></button>
-                                <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-                                <h1 className="font-bold text-slate-800 text-lg truncate max-w-[200px] sm:max-w-md">{inputs.hotelName || 'Untitled Project'}</h1>
-                                <button onClick={() => setIsInputPanelOpen(!isInputPanelOpen)} className="hidden xl:flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:text-slate-800 transition-colors">
-                                    {isInputPanelOpen ? <PanelLeftClose className="w-3.5 h-3.5" /> : <PanelLeftOpen className="w-3.5 h-3.5" />}
-                                    {isInputPanelOpen ? 'Hide Inputs' : 'Show Inputs'}
-                                </button>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={handleSaveProject} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm ${lastSavedTime ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
-                                    {lastSavedTime ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                                    <span className="hidden sm:inline">{lastSavedTime ? 'Saved' : 'Save Changes'}</span>
-                                </button>
-                                <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-                                <button onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50" title="Export PDF">
-                                    {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                                </button>
-                                <button onClick={handleDownloadCsv} className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" title="Export CSV">
-                                    <FileSpreadsheet className="w-5 h-5" />
+                    {/* Mobile Header */}
+                    <div className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 shrink-0 z-40">
+                        <div className="flex items-center gap-2 font-bold text-slate-800"><Building2 className="w-5 h-5 text-blue-600" />RevenuePro</div>
+                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600"><Menu className="w-6 h-6" /></button>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="flex-1 overflow-hidden relative">
+                        
+                        {view === 'editor' ? (
+                        <div className="flex flex-col h-full bg-slate-50/50">
+                            
+                            {/* Editor Header */}
+                            <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 shrink-0">
+                                <div className="w-full px-6 h-16 flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <button onClick={() => setView('dashboard')} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-colors"><ArrowLeft className="w-5 h-5" /></button>
+                                        <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+                                        <h1 className="font-bold text-slate-800 text-lg truncate max-w-[200px] sm:max-w-md">{inputs.hotelName || 'Untitled Project'}</h1>
+                                        <button onClick={() => setIsInputPanelOpen(!isInputPanelOpen)} className="hidden xl:flex items-center gap-2 text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg hover:text-slate-800 transition-colors">
+                                            {isInputPanelOpen ? <PanelLeftClose className="w-3.5 h-3.5" /> : <PanelLeftOpen className="w-3.5 h-3.5" />}
+                                            {isInputPanelOpen ? 'Hide Inputs' : 'Show Inputs'}
+                                        </button>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={handleSaveProject} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm ${lastSavedTime ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>
+                                            {lastSavedTime ? <CheckCircle className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                                            <span className="hidden sm:inline">{lastSavedTime ? 'Saved' : 'Save Changes'}</span>
+                                        </button>
+                                        <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+                                        <button onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors disabled:opacity-50" title="Export PDF">
+                                            {isGeneratingPdf ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                                        </button>
+                                        <button onClick={handleDownloadCsv} className="p-2.5 text-slate-600 hover:bg-slate-100 rounded-xl transition-colors" title="Export CSV">
+                                            <FileSpreadsheet className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </header>
+
+                            {/* Split View Container */}
+                            <div className="flex-1 flex overflow-hidden relative">
+                                <aside className={`
+                                    absolute inset-y-0 left-0 z-20 w-full md:w-[400px] xl:w-[420px] bg-white border-r border-slate-200 shadow-xl xl:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col
+                                    ${isInputPanelOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-[-100%]'}
+                                    xl:static xl:translate-x-0
+                                    ${!isInputPanelOpen && 'xl:hidden'}
+                                `}>
+                                    <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
+                                        <div className="mb-6 pb-6 border-b border-slate-100">
+                                            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Configuration</h2>
+                                            <InputSection inputs={inputs} onChange={setInputs} isOwnerView={isOwnerView} />
+                                        </div>
+                                    </div>
+                                </aside>
+
+                                <main className="flex-1 overflow-y-auto bg-slate-50/50 p-4 md:p-8 relative" id="report-content">
+                                    <div className="max-w-6xl mx-auto space-y-8 pb-20">
+                                        <SummaryCards metrics={metrics} occupancyPercent={inputs.occupancyPercent} roomPrice={inputs.roomPrice} />
+                                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                            <div className="xl:col-span-2 space-y-8">
+                                                <Visuals metrics={metrics} inputs={inputs} />
+                                                <RevenueTable metrics={metrics} isOwnerView={isOwnerView} extraDeductions={inputs.extraDeductions} />
+                                            </div>
+                                            <div className="xl:col-span-1 space-y-8">
+                                                <DealSummary metrics={metrics} inputs={inputs} />
+                                                <FinancialOverview metrics={metrics} inputs={inputs} />
+                                            </div>
+                                        </div>
+                                        <PrintableInputSummary inputs={inputs} />
+                                    </div>
+                                </main>
+
+                                <button 
+                                    onClick={() => setIsInputPanelOpen(!isInputPanelOpen)}
+                                    className={`xl:hidden absolute bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl text-white transition-all ${isInputPanelOpen ? 'bg-slate-900 rotate-180' : 'bg-blue-600'}`}
+                                >
+                                {isInputPanelOpen ? <ArrowLeft className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                                 </button>
                             </div>
                         </div>
-                    </header>
-
-                    {/* Split View Container */}
-                    <div className="flex-1 flex overflow-hidden relative">
-                        
-                        {/* LEFT PANEL: Inputs (Sticky/Scrollable) */}
-                        <aside className={`
-                            absolute inset-y-0 left-0 z-20 w-full md:w-[400px] xl:w-[420px] bg-white border-r border-slate-200 shadow-xl xl:shadow-none transform transition-transform duration-300 ease-in-out flex flex-col
-                            ${isInputPanelOpen ? 'translate-x-0' : '-translate-x-full xl:translate-x-[-100%]'}
-                            xl:static xl:translate-x-0
-                            ${!isInputPanelOpen && 'xl:hidden'}
-                        `}>
-                             <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-                                <div className="mb-6 pb-6 border-b border-slate-100">
-                                    <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Configuration</h2>
-                                    <InputSection inputs={inputs} onChange={setInputs} isOwnerView={isOwnerView} />
-                                </div>
-                             </div>
-                        </aside>
-
-                        {/* RIGHT PANEL: Visuals & Analytics (Scrollable) */}
-                        <main className="flex-1 overflow-y-auto bg-slate-50/50 p-4 md:p-8 relative" id="report-content">
-                            <div className="max-w-6xl mx-auto space-y-8 pb-20">
-                                
-                                <SummaryCards metrics={metrics} occupancyPercent={inputs.occupancyPercent} roomPrice={inputs.roomPrice} />
-                                
-                                <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                                    <div className="xl:col-span-2 space-y-8">
-                                        <Visuals metrics={metrics} inputs={inputs} />
-                                        <RevenueTable metrics={metrics} isOwnerView={isOwnerView} extraDeductions={inputs.extraDeductions} />
-                                    </div>
-                                    <div className="xl:col-span-1 space-y-8">
-                                        <DealSummary metrics={metrics} inputs={inputs} />
-                                        <FinancialOverview metrics={metrics} inputs={inputs} />
-                                    </div>
-                                </div>
-                                
-                                {/* Hidden Print Summary */}
-                                <PrintableInputSummary inputs={inputs} />
-                            </div>
-                        </main>
-
-                        {/* Toggle Button for Mobile/Tablet */}
-                        <button 
-                            onClick={() => setIsInputPanelOpen(!isInputPanelOpen)}
-                            className={`xl:hidden absolute bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl text-white transition-all ${isInputPanelOpen ? 'bg-slate-900 rotate-180' : 'bg-blue-600'}`}
-                        >
-                           {isInputPanelOpen ? <ArrowLeft className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                        </button>
-
+                        ) : (
+                        <div className="h-full overflow-y-auto bg-slate-50/50 scroll-smooth">
+                            {view === 'dashboard' && <Dashboard projects={savedProjects} onCreateNew={handleCreateNew} onOpen={handleOpenProject} onDelete={handleDeleteProject} />}
+                            {view === 'analytics' && <Analytics projects={savedProjects} />}
+                            {view === 'knowledge' && <KnowledgeBase />}
+                            {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
+                            {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
+                        </div>
+                        )}
                     </div>
-                  </div>
-                ) : (
-                   /* Non-Editor Views need their own scroll container because parent is overflow-hidden */
-                   <div className="h-full overflow-y-auto bg-slate-50/50 scroll-smooth">
-                       {view === 'dashboard' && <Dashboard projects={savedProjects} onCreateNew={handleCreateNew} onOpen={handleOpenProject} onDelete={handleDeleteProject} />}
-                       {view === 'analytics' && <Analytics projects={savedProjects} />}
-                       {view === 'knowledge' && <KnowledgeBase />}
-                       {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
-                       {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
-                   </div>
-                )}
+                </div>
             </div>
-        </div>
-    </div>
+        )}
+    </AccessGate>
   );
 };
 
