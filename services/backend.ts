@@ -2,9 +2,11 @@
 import { UserProfile, Subscription, License } from '../types';
 import { generateDeviceFingerprint } from '../utils';
 import { auth, db } from '../firebase'; 
-import { doc, getDoc, setDoc, updateDoc, collection, getDocs, orderBy, query } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs, orderBy, query, where } from 'firebase/firestore';
 
 const API_BASE = '/api'; 
+
+const ADMIN_EMAIL = "aayansah17@gmail.com";
 
 // MOCK FALLBACK for Local Development / Emergency
 const MOCK_LICENSE: License = {
@@ -30,9 +32,30 @@ export const BackendService = {
         };
     },
 
+    // --- FETCH LICENSE (UI Read Only) ---
+    async getLicense(userId: string): Promise<License | null> {
+        if (!db) return null;
+        try {
+            const snap = await getDoc(doc(db, 'licenses', userId));
+            if (snap.exists()) {
+                return snap.data() as License;
+            }
+            return null;
+        } catch (e) {
+            console.error("Failed to fetch license", e);
+            return null;
+        }
+    },
+
     // --- LICENSE GATE (Robust Hybrid Strategy) ---
     async validateLicense(user: UserProfile): Promise<{ authorized: boolean; reason?: string; license?: License; details?: string }> {
         const fingerprint = await generateDeviceFingerprint();
+        
+        // 0. ADMIN BYPASS (Admins can login anywhere)
+        if (user.email === ADMIN_EMAIL) {
+            return { authorized: true, details: "Admin Access" };
+        }
+
         let apiFailed = false;
         let apiErrorDetails = "";
 
@@ -43,8 +66,8 @@ export const BackendService = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     uid: user.uid,
-                    email: user.email,           // SEND EMAIL
-                    displayName: user.displayName, // SEND NAME
+                    email: user.email,           
+                    displayName: user.displayName, 
                     deviceId: fingerprint.hash,
                     deviceLabel: fingerprint.details 
                 })
@@ -74,20 +97,45 @@ export const BackendService = {
                 const licenseRef = doc(db, 'licenses', user.uid);
                 const snapshot = await getDoc(licenseRef);
 
-                // Common data to update (ensure we capture email/name even on fallback)
+                // --- SECURITY: GLOBAL DEVICE CHECK ---
+                // Check if this device ID is already used by ANY OTHER user in the system.
+                // This prevents creating new Gmails to get new trials on the same laptop.
+                const deviceQuery = query(collection(db, 'licenses'), where('deviceId', '==', fingerprint.hash));
+                const deviceSnapshot = await getDocs(deviceQuery);
+                
+                let deviceOwnerEmail = null;
+                let deviceOwnerId = null;
+
+                deviceSnapshot.forEach((doc) => {
+                    if (doc.id !== user.uid) {
+                        deviceOwnerId = doc.id;
+                        deviceOwnerEmail = doc.data().email;
+                    }
+                });
+
+                if (deviceOwnerId) {
+                    return { 
+                        authorized: false, 
+                        reason: 'device_used_by_other', 
+                        details: `This device is already registered to ${deviceOwnerEmail || 'another user'}. Multi-account trials are not permitted.` 
+                    };
+                }
+                // -------------------------------------
+
+                // Common data to update 
                 const userInfoUpdate = {
                     email: user.email,
                     displayName: user.displayName,
                     lastCheckedAt: Date.now()
                 };
 
-                // A. Create Trial if user has no license
+                // A. Create Trial if user has no license (AND device check passed)
                 if (!snapshot.exists()) {
                     const now = Date.now();
                     const trialLicense: any = {
                         userId: user.uid,
-                        email: user.email,           // Store Email
-                        displayName: user.displayName, // Store Name
+                        email: user.email,           
+                        displayName: user.displayName,
                         planId: 'trial',
                         status: 'trial',
                         startedAt: now,
@@ -111,12 +159,11 @@ export const BackendService = {
                 }
 
                 if (data.expiresAt < Date.now()) {
-                    // Update metadata even if expired so Admin sees them
                     await updateDoc(licenseRef, userInfoUpdate);
                     return { authorized: false, reason: 'expired' };
                 }
 
-                // C. Device Binding
+                // C. Device Binding (User Specific)
                 if (!data.deviceId) {
                     await updateDoc(licenseRef, {
                          ...userInfoUpdate,

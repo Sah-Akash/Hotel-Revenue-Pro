@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { BackendService } from '../services/backend'; 
 import { Subscription, License } from '../types';
-import { Users, RefreshCw, AlertCircle, CheckCircle2, Lock, Unlock, LogOut, Search, Mail, Calendar, Crown, Clock } from 'lucide-react';
+import { Users, RefreshCw, AlertCircle, CheckCircle2, Lock, Unlock, LogOut, Search, Mail, Calendar, Crown, Clock, Ban } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const AdminDashboard: React.FC = () => {
@@ -52,7 +52,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const revokeLicense = async (licenseId: string) => {
-      if(!confirm("Revoke this license? User will be blocked immediately.")) return;
+      if(!confirm("PERMANENTLY REVOKE LICENSE?\n\nThis will block the user and their device from accessing the trial. They will see the 'Buy Pro' message.")) return;
        try {
         await BackendService.revokeLicense(licenseId);
         await fetchData();
@@ -180,7 +180,7 @@ const AdminDashboard: React.FC = () => {
                             const daysLeft = Math.ceil((user.expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
                             
                             return (
-                                <tr key={user.userId} className="hover:bg-slate-50/80 transition-colors group">
+                                <tr key={user.userId} className={`hover:bg-slate-50/80 transition-colors group ${user.isRevoked ? 'bg-red-50/30' : ''}`}>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
@@ -199,7 +199,7 @@ const AdminDashboard: React.FC = () => {
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
                                                 {user.isRevoked ? (
-                                                    <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-red-200">REVOKED</span>
+                                                    <span className="bg-red-600 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase shadow-sm">REVOKED</span>
                                                 ) : isExpired ? (
                                                     <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-slate-200">EXPIRED</span>
                                                 ) : (
@@ -251,8 +251,8 @@ const AdminDashboard: React.FC = () => {
                                             )}
                                             
                                             {!user.isRevoked && (
-                                                <button onClick={() => revokeLicense(user.userId)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Revoke Access">
-                                                    <Lock className="w-4 h-4" />
+                                                <button onClick={() => revokeLicense(user.userId)} className="p-2 text-slate-400 hover:text-white hover:bg-red-600 rounded-lg transition-colors" title="Revoke & Block Device">
+                                                    <Ban className="w-4 h-4" />
                                                 </button>
                                             )}
                                         </div>
