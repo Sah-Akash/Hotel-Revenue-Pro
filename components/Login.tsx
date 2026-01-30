@@ -7,10 +7,14 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Background Gradients */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-            <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[100px]"></div>
-            <div className="absolute top-[30%] -right-[10%] w-[40%] h-[60%] bg-indigo-600/20 rounded-full blur-[100px]"></div>
+        {/* Background Gradients - Optimized */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+            {/* Simple Gradient for Mobile */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-indigo-900/20 md:hidden"></div>
+
+            {/* Heavy Blurs for Desktop Only */}
+            <div className="hidden md:block absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[100px]"></div>
+            <div className="hidden md:block absolute top-[30%] -right-[10%] w-[40%] h-[60%] bg-indigo-600/20 rounded-full blur-[100px]"></div>
         </div>
 
         <div className="w-full max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center relative z-10">

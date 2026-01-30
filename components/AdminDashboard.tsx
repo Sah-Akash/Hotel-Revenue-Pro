@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
-import { KeyRound, Plus, Trash2, Clock, MonitorSmartphone, RefreshCw, AlertCircle, Users, Mail, Check, X } from 'lucide-react';
+import { collection, getDocs, query, orderBy, deleteDoc, doc, setDoc } from 'firebase/firestore';
+import { KeyRound, Plus, Trash2, Clock, MonitorSmartphone, RefreshCw, AlertCircle, Users, Mail, Check, X, Copy } from 'lucide-react';
 import { AccessKey, AccessRequest } from '../types';
 
 const AdminDashboard: React.FC = () => {
@@ -10,6 +10,9 @@ const AdminDashboard: React.FC = () => {
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  
+  // New State for displaying the generated key
+  const [generatedKeyData, setGeneratedKeyData] = useState<{key: string, user: string} | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -39,17 +42,16 @@ const AdminDashboard: React.FC = () => {
           } catch(e) { console.warn("DB Keys fail"); }
       }
       
-      // Merge with local for hybrid feeling
       const local = JSON.parse(localStorage.getItem('hrp_admin_keys') || '[]');
-      // Simple merge: prefer DB, but add local if not in DB
       const combined = [...fetchedKeys];
+      // Merge local keys that might not be in DB (if any)
       local.forEach((lk: AccessKey) => {
           if (!combined.find(k => k.id === lk.id)) combined.push(lk);
       });
       setKeys(combined.sort((a,b) => b.createdAt - a.createdAt));
   };
 
-  const generateKeyForUser = async (request?: AccessRequest) => {
+  const approveRequest = async (request: AccessRequest) => {
       setGenerating(true);
       try {
           const key = Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -64,28 +66,40 @@ const AdminDashboard: React.FC = () => {
               deviceId: null
           };
 
-          // Save Key
+          // 1. Save Key
           if (db) {
-              try { await setDoc(doc(db, 'access_keys', key), newKeyObj); }
-              catch(e) { saveLocalKey(newKeyObj); }
+              await setDoc(doc(db, 'access_keys', key), newKeyObj);
+              // Also delete request
+              await deleteDoc(doc(db, 'access_requests', request.id));
           } else {
               saveLocalKey(newKeyObj);
           }
 
-          if (request) {
-              // If generated from a request, delete the request and open email
-              await deleteRequest(request.id);
-              openEmailResponse(request, key);
-              setActiveTab('keys'); // Switch view
-          } else {
-              await fetchKeys();
-          }
+          // 2. Show Key to Admin
+          setGeneratedKeyData({ key, user: request.name });
 
+          // 3. Refresh
+          setRequests(prev => prev.filter(r => r.id !== request.id));
+          
       } catch (error) {
-          console.error("Gen failed", error);
+          console.error("Approval failed", error);
+          alert("Error approving request. Check console.");
       } finally {
           setGenerating(false);
       }
+  };
+  
+  const manualGenerate = async () => {
+      const key = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const now = Date.now();
+      const expiresAt = now + (24 * 60 * 60 * 1000);
+      const newKeyObj = { id: key, key, expiresAt, createdAt: now, deviceId: null };
+      
+      if(db) await setDoc(doc(db, 'access_keys', key), newKeyObj);
+      else saveLocalKey(newKeyObj);
+      
+      setGeneratedKeyData({ key, user: "Manual Generation" });
+      fetchKeys();
   };
 
   const saveLocalKey = (newKey: AccessKey) => {
@@ -111,25 +125,13 @@ const AdminDashboard: React.FC = () => {
               fetchedReqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AccessRequest[];
           } catch (e) { console.warn("DB Requests fail"); }
       }
-      const local = JSON.parse(localStorage.getItem('hrp_requests_local') || '[]');
-      const combined = [...fetchedReqs];
-      local.forEach((lr: AccessRequest) => {
-          if (!combined.find(r => r.id === lr.id)) combined.push(lr);
-      });
-      setRequests(combined.sort((a,b) => b.requestedAt - a.requestedAt));
+      // Note: We don't fetch local requests because user requests from other devices won't be in local storage here.
+      setRequests(fetchedReqs.sort((a,b) => b.requestedAt - a.requestedAt));
   };
 
   const deleteRequest = async (id: string) => {
       if (db) { try { await deleteDoc(doc(db, 'access_requests', id)); } catch(e){} }
-      const local = JSON.parse(localStorage.getItem('hrp_requests_local') || '[]');
-      localStorage.setItem('hrp_requests_local', JSON.stringify(local.filter((r:any) => r.id !== id)));
-      fetchRequests();
-  };
-
-  const openEmailResponse = (req: AccessRequest, key: string) => {
-      const subject = "Access Granted: Hotel Revenue Pro";
-      const body = `Hi ${req.name},\n\nYour access request has been approved.\n\nYour Access Key: ${key}\n\nThis key is valid for 24 hours and can be used on one device only.\n\nRegards,\nAdmin`;
-      window.open(`mailto:${req.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+      setRequests(prev => prev.filter(r => r.id !== id));
   };
 
   const formatTimeLeft = (expiresAt: number) => {
@@ -141,15 +143,52 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className="p-4 md:p-8 max-w-6xl mx-auto relative">
+        
+        {/* KEY GENERATED MODAL */}
+        {generatedKeyData && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
+                        <Check className="w-8 h-8" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Key Generated!</h2>
+                    <p className="text-slate-500 mb-6">For user: <strong>{generatedKeyData.user}</strong></p>
+                    
+                    <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mb-6 flex items-center justify-between gap-4">
+                        <code className="text-2xl font-mono font-bold text-blue-600">{generatedKeyData.key}</code>
+                        <button 
+                            onClick={() => navigator.clipboard.writeText(generatedKeyData.key)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
+                            title="Copy to clipboard"
+                        >
+                            <Copy className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <p className="text-xs text-slate-400 mb-6">
+                        Copy this key and send it to the user via Email or WhatsApp.<br/>
+                        It is valid for 24 hours.
+                    </p>
+
+                    <button 
+                        onClick={() => setGeneratedKeyData(null)}
+                        className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800"
+                    >
+                        Done
+                    </button>
+                </div>
+            </div>
+        )}
+
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
                 <h1 className="text-3xl font-bold text-slate-900">Admin Panel</h1>
                 <p className="text-slate-500">Manage requests and access keys.</p>
                 {!db && (
-                    <div className="flex items-center gap-2 mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded w-fit border border-amber-100">
+                    <div className="flex items-center gap-2 mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded w-fit border border-red-100 font-bold">
                         <AlertCircle className="w-3 h-3" />
-                        Local Mode
+                        Database Not Connected - Requests won't appear here!
                     </div>
                 )}
             </div>
@@ -174,6 +213,14 @@ const AdminDashboard: React.FC = () => {
         {/* --- REQUESTS TAB --- */}
         {activeTab === 'requests' && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                {!db && (
+                    <div className="p-6 text-center text-slate-500 border-b border-slate-100">
+                        <p className="font-bold text-red-500 mb-2">Setup Required</p>
+                        <p className="text-sm">You must configure Firebase in <code>firebase.ts</code> for requests to appear here.</p>
+                        <p className="text-xs mt-2">Currently, users are sending requests via Email only.</p>
+                    </div>
+                )}
+                
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
@@ -185,7 +232,7 @@ const AdminDashboard: React.FC = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {loading ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">Loading...</td></tr> : 
-                        requests.length === 0 ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">No pending requests.</td></tr> :
+                        requests.length === 0 ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">No pending requests found.</td></tr> :
                         requests.map(req => (
                             <tr key={req.id} className="hover:bg-slate-50">
                                 <td className="px-6 py-4">
@@ -203,11 +250,11 @@ const AdminDashboard: React.FC = () => {
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
                                         <button 
-                                            onClick={() => generateKeyForUser(req)}
+                                            onClick={() => approveRequest(req)}
                                             disabled={generating}
-                                            className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border border-emerald-200"
+                                            className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border border-emerald-200 transition-colors"
                                         >
-                                            <Check className="w-3 h-3" /> Approve & Email
+                                            <Check className="w-3 h-3" /> Approve
                                         </button>
                                         <button 
                                             onClick={() => deleteRequest(req.id)}
@@ -229,7 +276,7 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-4">
                  <div className="flex justify-end">
                     <button 
-                        onClick={() => generateKeyForUser()} 
+                        onClick={manualGenerate} 
                         disabled={generating}
                         className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-blue-200"
                     >
