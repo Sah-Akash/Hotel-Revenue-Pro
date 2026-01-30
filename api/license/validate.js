@@ -14,16 +14,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Check if DB initialized
   if (!db) {
-      // Return the specific initialization error to help the user debug
       console.error("DB Validation Error:", initError);
       return res.status(500).json({ 
           error: `Server Config Error: ${initError || 'Database not initialized'}` 
       });
   }
 
-  const { uid, deviceId } = req.body;
+  const { uid, deviceId, email, displayName, deviceLabel } = req.body;
 
   if (!uid || !deviceId) {
     return res.status(400).json({ allowed: false, reason: 'Missing parameters' });
@@ -33,17 +31,27 @@ export default async function handler(req, res) {
     const licenseRef = db.collection('licenses').doc(uid);
     const licenseDoc = await licenseRef.get();
 
-    // 1. Check if License Exists - If NOT, Create TRIAL
+    // Data to update for identification
+    const identityUpdate = {
+        email: email || null,
+        displayName: displayName || null,
+        lastCheckedAt: Date.now()
+    };
+
+    // 1. CREATE NEW TRIAL
     if (!licenseDoc.exists) {
         const now = Date.now();
         const trialData = {
             userId: uid,
+            email: email || null,
+            displayName: displayName || null,
             planId: 'trial',
             status: 'trial',
             startedAt: now,
             expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7 Days
-            deviceId: deviceId, // Auto-bind first device
-            deviceHistory: [{ id: deviceId, date: now }],
+            deviceId: deviceId, 
+            deviceLabel: deviceLabel || 'Unknown',
+            deviceHistory: [{ id: deviceId, date: now, label: deviceLabel }],
             isRevoked: false,
             lastCheckedAt: now
         };
@@ -56,44 +64,48 @@ export default async function handler(req, res) {
 
     const data = licenseDoc.data();
 
-    // 2. Check if Revoked
+    // 2. CHECK REVOKED
     if (data.isRevoked) {
       return res.status(200).json({ allowed: false, reason: 'license_revoked' });
     }
 
-    // 3. Check Expiry
+    // 3. CHECK EXPIRY
     if (data.expiresAt < Date.now()) {
+      await licenseRef.update(identityUpdate); // Keep identifying info fresh even if expired
       return res.status(200).json({ allowed: false, reason: 'expired' });
     }
 
-    // 4. Device Binding Logic
+    // 4. DEVICE BINDING
     let currentBoundDevice = data.deviceId;
 
     if (!currentBoundDevice) {
-      await licenseRef.update({ 
+      const updateData = { 
+        ...identityUpdate,
         deviceId: deviceId,
-        lastCheckedAt: Date.now(),
-        deviceHistory: ((data.deviceHistory || []).concat([{ id: deviceId, date: Date.now() }]))
-      });
+        deviceLabel: deviceLabel || 'Unknown',
+        deviceHistory: ((data.deviceHistory || []).concat([{ id: deviceId, date: Date.now(), label: deviceLabel }]))
+      };
+      await licenseRef.update(updateData);
+      
       await logAttempt(uid, deviceId, 'bound_new_device');
       return res.status(200).json({ 
         allowed: true, 
-        license: { ...data, deviceId: deviceId } 
+        license: { ...data, ...updateData } 
       });
     }
 
-    // 5. Verify Device Match
+    // 5. DEVICE MISMATCH
     if (currentBoundDevice !== deviceId) {
        await logAttempt(uid, deviceId, 'device_mismatch');
        return res.status(200).json({ 
          allowed: false, 
          reason: 'device_mismatch',
-         boundTo: currentBoundDevice
+         boundTo: data.deviceLabel || currentBoundDevice
        });
     }
 
-    // 6. Success
-    await licenseRef.update({ lastCheckedAt: Date.now() });
+    // 6. SUCCESS
+    await licenseRef.update(identityUpdate);
     return res.status(200).json({ allowed: true, license: data });
 
   } catch (error) {

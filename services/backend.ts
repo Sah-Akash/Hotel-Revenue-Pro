@@ -43,7 +43,10 @@ export const BackendService = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     uid: user.uid,
-                    deviceId: fingerprint.hash
+                    email: user.email,           // SEND EMAIL
+                    displayName: user.displayName, // SEND NAME
+                    deviceId: fingerprint.hash,
+                    deviceLabel: fingerprint.details 
                 })
             });
 
@@ -71,57 +74,70 @@ export const BackendService = {
                 const licenseRef = doc(db, 'licenses', user.uid);
                 const snapshot = await getDoc(licenseRef);
 
+                // Common data to update (ensure we capture email/name even on fallback)
+                const userInfoUpdate = {
+                    email: user.email,
+                    displayName: user.displayName,
+                    lastCheckedAt: Date.now()
+                };
+
                 // A. Create Trial if user has no license
                 if (!snapshot.exists()) {
                     const now = Date.now();
                     const trialLicense: any = {
                         userId: user.uid,
+                        email: user.email,           // Store Email
+                        displayName: user.displayName, // Store Name
                         planId: 'trial',
                         status: 'trial',
                         startedAt: now,
-                        expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7 Days
+                        expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7 Days Strict
                         deviceId: fingerprint.hash,
-                        deviceHistory: [{ id: fingerprint.hash, date: now }],
+                        deviceLabel: fingerprint.details,
+                        deviceHistory: [{ id: fingerprint.hash, date: now, label: fingerprint.details }],
                         isRevoked: false,
                         lastCheckedAt: now
                     };
                     
-                    // Client-side creation allowed by rules: create if isOwner
                     await setDoc(licenseRef, trialLicense);
                     return { authorized: true, license: trialLicense as License };
                 }
 
                 const data = snapshot.data();
 
-                // B. Validation Logic (Mirrors Server Logic)
+                // B. Validation Logic
                 if (data.isRevoked) {
                     return { authorized: false, reason: 'license_revoked' };
                 }
 
                 if (data.expiresAt < Date.now()) {
+                    // Update metadata even if expired so Admin sees them
+                    await updateDoc(licenseRef, userInfoUpdate);
                     return { authorized: false, reason: 'expired' };
                 }
 
                 // C. Device Binding
                 if (!data.deviceId) {
                     await updateDoc(licenseRef, {
+                         ...userInfoUpdate,
                          deviceId: fingerprint.hash,
-                         lastCheckedAt: Date.now(),
-                         deviceHistory: [...(data.deviceHistory || []), { id: fingerprint.hash, date: Date.now() }]
+                         deviceLabel: fingerprint.details,
+                         deviceHistory: [...(data.deviceHistory || []), { id: fingerprint.hash, date: Date.now(), label: fingerprint.details }]
                     });
                     return { authorized: true, license: { ...data, deviceId: fingerprint.hash } as License };
                 }
 
                 if (data.deviceId !== fingerprint.hash) {
-                    return { authorized: false, reason: 'device_mismatch', details: `Bound to: ${data.deviceId}` };
+                    return { authorized: false, reason: 'device_mismatch', details: `Bound to: ${data.deviceLabel || data.deviceId}` };
                 }
 
+                // Update metadata on success
+                await updateDoc(licenseRef, userInfoUpdate);
                 return { authorized: true, license: data as License };
 
             } catch (clientErr: any) {
                 console.error("Client Fallback Failed:", clientErr);
                 
-                // Last Resort: Localhost Mock
                 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
                     return { authorized: true, license: { ...MOCK_LICENSE, userId: user.uid, deviceId: fingerprint.hash } };
                 }
@@ -173,7 +189,6 @@ export const BackendService = {
                 body: JSON.stringify({ userId })
             });
         } catch (e) {
-            // Fallback
             if (db) await updateDoc(doc(db, 'licenses', userId), { isRevoked: true });
         }
     },
@@ -187,7 +202,6 @@ export const BackendService = {
                 body: JSON.stringify({ userId })
             });
         } catch (e) {
-            // Fallback
             if (db) await updateDoc(doc(db, 'licenses', userId), { deviceId: null });
         }
     },
@@ -201,12 +215,15 @@ export const BackendService = {
                 body: JSON.stringify({ userId, durationDays: days, planId: 'pro_monthly' })
             });
         } catch (e) {
-            // Fallback
             if (db) {
                 const ref = doc(db, 'licenses', userId);
                 const snap = await getDoc(ref);
                 const currentExpiry = snap.exists() ? snap.data().expiresAt : Date.now();
-                const newExpiry = Math.max(Date.now(), currentExpiry) + (days * 24 * 60 * 60 * 1000);
+                
+                // If currently expired, start from NOW. If active, extend from Expiry.
+                const baseTime = Math.max(Date.now(), currentExpiry);
+                const newExpiry = baseTime + (days * 24 * 60 * 60 * 1000);
+                
                 await setDoc(ref, { 
                     status: 'active',
                     expiresAt: newExpiry,

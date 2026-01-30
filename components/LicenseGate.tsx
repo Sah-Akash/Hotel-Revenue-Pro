@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BackendService } from '../services/backend'; 
 import { generateDeviceFingerprint } from '../utils';
-import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
+import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, AlertTriangle, RefreshCw, WifiOff, Mail, ExternalLink } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
@@ -12,6 +12,7 @@ interface Props {
 type LicenseState = 'checking' | 'authorized' | 'no_subscription' | 'expired' | 'device_mismatch' | 'license_revoked' | 'error' | 'network_error';
 
 const ADMIN_EMAIL = "aayansah17@gmail.com";
+const SUPPORT_EMAIL = "aayansah17@gmail.com";
 
 const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   const { user, logout, loading: authLoading } = useAuth();
@@ -71,14 +72,17 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
     }
   };
 
+  const contactSupport = () => {
+      const subject = "Request for Pro Subscription - Hotel Revenue Pro";
+      const body = `Hi Team,\n\nMy trial has expired. I would like to purchase a subscription.\n\nUser ID: ${user?.uid}\nEmail: ${user?.email}\n\nPlease help me upgrade.`;
+      window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   // --- RENDER STATES ---
 
   if (authLoading || licenseState === 'checking') {
-      // Check immediately for admin key to prevent flash
       if (localStorage.getItem('hrp_access_key') === 'ADMIN123') return <>{children}</>;
       if (!user) return <>{children}</>; 
-      
-      // If Admin Email, just return children (useEffect handles routing)
       if (user.email === ADMIN_EMAIL) return <>{children}</>;
 
       return (
@@ -96,7 +100,7 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   // --- DENY SCREENS ---
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans">
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl relative overflow-hidden">
             
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl"></div>
@@ -108,11 +112,21 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                             <Lock className="w-8 h-8" />
                         </div>
                         <h2 className="text-2xl font-bold text-white mb-2">
-                             {licenseState === 'expired' ? 'Subscription Expired' : 'No Active Subscription'}
+                             Trial Ended
                         </h2>
-                        <p className="text-slate-400 mb-6 text-sm">
-                            Your account ({user?.email}) does not have a valid subscription.
-                        </p>
+                        <div className="bg-blue-900/20 border border-blue-900/50 p-4 rounded-xl mb-6">
+                            <p className="text-blue-200 text-sm mb-1 font-medium">Your 7-day trial has expired.</p>
+                            <p className="text-slate-400 text-xs">
+                                To continue using RevenuePro with advanced financial modeling, please upgrade to a Pro plan.
+                            </p>
+                        </div>
+                        
+                        <button 
+                            onClick={contactSupport}
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 mb-3 shadow-lg shadow-blue-900/20 transition-all"
+                        >
+                            <Mail className="w-4 h-4" /> Contact Sales to Upgrade
+                        </button>
                     </>
                 )}
 
@@ -128,7 +142,7 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                                 <div>
                                     <p className="text-red-400 text-xs font-bold uppercase tracking-wide mb-1">Security Alert</p>
                                     <p className="text-slate-400 text-sm">
-                                        Your license is bound to another device. 
+                                        Your license is bound to another device. Please contact support to reset your device binding.
                                     </p>
                                 </div>
                             </div>
@@ -136,6 +150,12 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                                 This Device: {deviceDetails}
                             </div>
                         </div>
+                        <button 
+                            onClick={contactSupport}
+                            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 mb-3"
+                        >
+                            <Mail className="w-4 h-4" /> Request Device Reset
+                        </button>
                     </>
                 )}
 
