@@ -3,9 +3,19 @@ import { UserProfile, Subscription, License } from '../types';
 import { generateDeviceFingerprint } from '../utils';
 import { auth } from '../firebase'; // Import client auth to get tokens
 
-// Change this to empty string '' if deploying on same domain, 
-// or full URL 'https://your-project.vercel.app' if separate.
 const API_BASE = '/api'; 
+
+// MOCK FALLBACK for Local Development
+const MOCK_LICENSE: License = {
+    id: 'mock-license',
+    userId: 'local-user',
+    deviceId: 'local-device',
+    subscriptionId: 'sub-123',
+    issuedAt: Date.now(),
+    lastCheckedAt: Date.now(),
+    deviceLabel: 'Local Dev Machine',
+    isRevoked: false
+};
 
 export const BackendService = {
     
@@ -34,12 +44,29 @@ export const BackendService = {
                 })
             });
 
-            if (!response.ok) throw new Error("API Validation Failed");
+            // Handle Server Errors (e.g. 500 Config Error)
+            if (!response.ok) {
+                const text = await response.text();
+                console.error(`API Error (${response.status}):`, text);
+                
+                // If it's a 404, it means the API route doesn't exist (Localhost without Vercel Dev)
+                // If it's a 500, it's likely Env Vars missing on Vercel
+                throw new Error(`Server Error: ${response.status}`);
+            }
             
             const data = await response.json();
             return data;
-        } catch (e) {
-            console.error(e);
+
+        } catch (e: any) {
+            console.error("Validation Request Failed:", e);
+            
+            // LOCALHOST FALLBACK
+            // If we are developing locally and the API is unreachable (404/Network), assume authorized for testing.
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.warn("⚠️ API Unreachable on Localhost. Using Mock Fallback.");
+                return { authorized: true, license: { ...MOCK_LICENSE, userId: user.uid, deviceId: fingerprint.hash } };
+            }
+
             return { authorized: false, reason: 'network_error' };
         }
     },
@@ -49,13 +76,12 @@ export const BackendService = {
     async getAllUsers(): Promise<Subscription[]> {
         const headers = await this.getAuthHeaders();
         const response = await fetch(`${API_BASE}/admin/list-users`, { headers });
+        if (!response.ok) throw new Error("Failed to fetch users");
         const data = await response.json();
         return data.users || [];
     },
 
     async getAllLicenses(): Promise<License[]> {
-        // In this architecture, users AND licenses are combined in the 'licenses' collection
-        // So we return the same list, just typed differently if needed
         return this.getAllUsers() as unknown as License[];
     },
 

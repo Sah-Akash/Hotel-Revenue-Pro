@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { BackendService } from '../services/backend'; // CHANGED to real backend
+import { BackendService } from '../services/backend'; 
 import { generateDeviceFingerprint } from '../utils';
-import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, Smartphone, AlertTriangle } from 'lucide-react';
+import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, AlertTriangle, RefreshCw } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
@@ -26,12 +26,8 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
         return;
     }
 
-    // Admin Bypass Logic could also be moved to backend, but safe to keep UI shortcut for now
     if (user.email === ADMIN_EMAIL) {
         onAdminAccess();
-        // We still validate admin to ensure they have a backend entry if needed, 
-        // but typically admins bypass the "license" check or give themselves a license.
-        // Let's allow flow through.
     }
 
     validateLicense();
@@ -40,12 +36,12 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   const validateLicense = async () => {
     if (!user) return;
     setLicenseState('checking');
+    setErrorMessage(null);
 
     try {
         const fingerprint = await generateDeviceFingerprint();
         setDeviceDetails(fingerprint.details);
 
-        // Call the Real Backend
         const result = await BackendService.validateLicense(user);
 
         if (result.authorized) {
@@ -83,7 +79,6 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl relative overflow-hidden">
             
-            {/* Background Blob */}
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl"></div>
             
             <div className="relative z-10">
@@ -134,13 +129,26 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                     </>
                 )}
                 
-                {licenseState === 'network_error' && (
+                {(licenseState === 'network_error' || licenseState === 'error') && (
                      <>
                         <div className="w-16 h-16 bg-yellow-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-yellow-500">
                             <AlertTriangle className="w-8 h-8" />
                         </div>
                         <h2 className="text-2xl font-bold text-white mb-2">Connection Failed</h2>
-                        <p className="text-slate-400 mb-6 text-sm">Could not reach authentication server.</p>
+                        <p className="text-slate-400 mb-4 text-sm">
+                            Could not communicate with the authentication server.
+                        </p>
+                        {errorMessage && (
+                            <div className="bg-slate-950 border border-slate-800 p-3 rounded-lg mb-6 text-left">
+                                <p className="text-xs font-mono text-red-400 break-words">{errorMessage}</p>
+                            </div>
+                        )}
+                        <button 
+                            onClick={validateLicense} 
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 mb-3"
+                        >
+                            <RefreshCw className="w-4 h-4" /> Retry
+                        </button>
                     </>
                 )}
 
