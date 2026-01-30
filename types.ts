@@ -22,7 +22,6 @@ export interface CalculationMetrics {
   dailyNet: number; 
   monthlyNet: number;
   yearlyNet: number;
-  // Financials
   monthlyEMI: number;
   yearlyEMI: number;
   monthlyCashFlow: number;
@@ -31,8 +30,6 @@ export interface CalculationMetrics {
   roi: number; 
   valuation: number; 
   paybackPeriod: number; 
-  
-  // Deal Sheet Specific Metrics (Matching Image)
   dealMonthlyGst: number;
   dealRevenueNetGst: number; 
   dealOtaAbs: number;
@@ -54,19 +51,15 @@ export interface InputState {
   roomPrice: number;
   roundSRN: boolean;
   extraDeductions: ExtraDeduction[];
-  maintenanceCostPerRoom: number; // Acts as Opex per URN
-  // Financials
+  maintenanceCostPerRoom: number;
   includeFinancials: boolean;
   propertyValue: number;
   loanAmount: number;
   interestRate: number;
   loanTermYears: number;
-  // Amenities / Classification
   hasKitchen: boolean;
   hasRestaurant: boolean;
   hasGym: boolean;
-  
-  // New Deal Specific Inputs
   otaPercent: number;
   monthlyMg: number;
   securityDeposit: number;
@@ -100,23 +93,36 @@ export interface UserProfile {
     email: string | null;
     displayName: string | null;
     photoURL: string | null;
+    role?: 'admin' | 'user';
 }
 
-export interface AccessKey {
-    id: string;
-    key: string;
+// --- NEW SAAS ARCHITECTURE TYPES ---
+
+export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'trial';
+
+export interface Subscription {
+    id: string;       // Usually same as User UID for 1:1 mapping
+    userId: string;
+    planId: 'trial' | 'pro_monthly' | 'pro_yearly' | 'enterprise';
+    status: SubscriptionStatus;
+    startedAt: number;
     expiresAt: number;
-    createdAt: number;
-    deviceId: string | null;
 }
 
-export interface AccessRequest {
+export interface License {
     id: string;
-    name: string;
-    email: string;
-    mobile: string;
-    requestedAt: number;
-    status: 'pending' | 'approved' | 'rejected';
+    userId: string;
+    deviceId: string; // The fingerprint
+    subscriptionId: string;
+    issuedAt: number;
+    lastCheckedAt: number;
+    deviceLabel: string; // e.g., "Chrome on Windows"
+    isRevoked: boolean;
+}
+
+export interface DeviceFingerprint {
+    hash: string;
+    details: string;
 }
 
 export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'knowledge' | 'settings' | 'help' | 'login' | 'admin';

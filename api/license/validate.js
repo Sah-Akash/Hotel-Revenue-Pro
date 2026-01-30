@@ -1,0 +1,94 @@
+
+import { db } from '../utils/firebaseAdmin.js';
+
+export default async function handler(req, res) {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { uid, deviceId } = req.body;
+
+  if (!uid || !deviceId) {
+    return res.status(400).json({ allowed: false, reason: 'Missing parameters' });
+  }
+
+  try {
+    const licenseRef = db.collection('licenses').doc(uid);
+    const licenseDoc = await licenseRef.get();
+
+    // 1. Check if License Exists
+    if (!licenseDoc.exists) {
+      return res.status(200).json({ allowed: false, reason: 'no_subscription' });
+    }
+
+    const data = licenseDoc.data();
+
+    // 2. Check if Revoked
+    if (data.isRevoked) {
+      return res.status(200).json({ allowed: false, reason: 'license_revoked' });
+    }
+
+    // 3. Check Expiry
+    if (data.expiresAt < Date.now()) {
+      return res.status(200).json({ allowed: false, reason: 'expired' });
+    }
+
+    // 4. Device Binding Logic
+    let currentBoundDevice = data.deviceId;
+
+    if (!currentBoundDevice) {
+      // First time login on a device: BIND IT
+      await licenseRef.update({ 
+        deviceId: deviceId,
+        lastCheckedAt: Date.now(),
+        deviceHistory: ((data.deviceHistory || []).concat([{ id: deviceId, date: Date.now() }]))
+      });
+      
+      // Log Success
+      await logAttempt(uid, deviceId, 'bound_new_device');
+      
+      return res.status(200).json({ 
+        allowed: true, 
+        license: { ...data, deviceId: deviceId } 
+      });
+    }
+
+    // 5. Verify Device Match
+    if (currentBoundDevice !== deviceId) {
+       await logAttempt(uid, deviceId, 'device_mismatch');
+       return res.status(200).json({ 
+         allowed: false, 
+         reason: 'device_mismatch',
+         boundTo: currentBoundDevice // Optional: don't show full hash in prod
+       });
+    }
+
+    // 6. Success
+    await licenseRef.update({ lastCheckedAt: Date.now() });
+    return res.status(200).json({ allowed: true, license: data });
+
+  } catch (error) {
+    console.error("Validation Error", error);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+}
+
+async function logAttempt(userId, deviceId, result) {
+    try {
+        await db.collection('licenseLogs').add({
+            userId,
+            deviceId,
+            result,
+            timestamp: Date.now()
+        });
+    } catch(e) { console.error("Logging failed", e); }
+}

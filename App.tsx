@@ -6,7 +6,7 @@ import { db } from './firebase';
 import { collection, query, where, getDocs, setDoc, doc, deleteDoc } from 'firebase/firestore';
 
 // Components
-import AccessGate from './components/AccessGate';
+import LicenseGate from './components/LicenseGate'; // CHANGED
 import InputSection from './components/InputSection';
 import PrintableInputSummary from './components/PrintableInputSummary';
 import SummaryCards from './components/SummaryCards';
@@ -20,9 +20,9 @@ import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import Login from './components/Login';
 import KnowledgeBase from './components/KnowledgeBase';
-import AdminDashboard from './components/AdminDashboard'; // New Import
+import AdminDashboard from './components/AdminDashboard'; 
 
-import { Building2, Eye, EyeOff, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Building2, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEAL_OTA_RATE } from './constants';
 
 // Default initial state
@@ -42,7 +42,6 @@ const INITIAL_INPUTS: InputState = {
   hasKitchen: false,
   hasRestaurant: false,
   hasGym: false,
-  // New Deal Inputs
   otaPercent: DEAL_OTA_RATE,
   monthlyMg: 0,
   securityDeposit: 0,
@@ -57,17 +56,14 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 const App: React.FC = () => {
-  // --- AUTH HOOK ---
   const { user, loading: authLoading, isGuest } = useAuth();
 
-  // --- STATE ---
   const [view, setView] = useState<ViewType>('login'); 
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
   
-  // Editor State
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [inputs, setInputs] = useState<InputState>(INITIAL_INPUTS);
   
@@ -76,12 +72,8 @@ const App: React.FC = () => {
   const [lastSavedTime, setLastSavedTime] = useState<number | null>(null);
   const [isInputPanelOpen, setIsInputPanelOpen] = useState(true);
 
-  // --- CALCULATOR HOOK ---
   const metrics = useCalculator(inputs);
 
-  // --- EFFECTS ---
-
-  // Handle Authentication State Changes & Initial Data Load
   useEffect(() => {
     if (authLoading) return;
 
@@ -89,6 +81,9 @@ const App: React.FC = () => {
         setView('dashboard');
         fetchProjectsFromCloud(user.uid);
     } else if (isGuest) {
+        // Guest mode is now restricted in LicenseGate logic if needed, 
+        // but for now we allow the 'continueAsGuest' flow for Demo purposes 
+        // until the LicenseGate enforces no_sub
         setView('dashboard');
         loadProjectsFromLocalStorage();
     } else {
@@ -96,7 +91,6 @@ const App: React.FC = () => {
     }
   }, [user, authLoading, isGuest]);
 
-  // Load Settings from LocalStorage
   useEffect(() => {
     const storedSettings = localStorage.getItem('hotel_revenue_pro_settings');
     if (storedSettings) {
@@ -108,7 +102,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // --- DATA SYNC FUNCTIONS ---
   const loadProjectsFromLocalStorage = () => {
       const stored = localStorage.getItem('hotel_revenue_pro_projects');
       if (stored) {
@@ -162,7 +155,6 @@ const App: React.FC = () => {
       }
   };
 
-  // --- HANDLERS ---
   const handleSaveSettings = (newSettings: AppSettings) => {
       setAppSettings(newSettings);
       localStorage.setItem('hotel_revenue_pro_settings', JSON.stringify(newSettings));
@@ -298,9 +290,8 @@ const App: React.FC = () => {
     }
   };
 
-  // WRAP CONTENT IN ACCESS GATE
   return (
-    <AccessGate onAdminAccess={() => setView('admin')}>
+    <LicenseGate onAdminAccess={() => setView('admin')}>
         {authLoading ? (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
@@ -415,7 +406,7 @@ const App: React.FC = () => {
                 </div>
             </div>
         )}
-    </AccessGate>
+    </LicenseGate>
   );
 };
 

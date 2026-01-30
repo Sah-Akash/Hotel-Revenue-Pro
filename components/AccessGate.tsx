@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Lock, ArrowRight, ShieldAlert, Loader2, KeyRound, User, Phone, Mail, Send, CheckCircle2, ChevronLeft, ExternalLink } from 'lucide-react';
-import { db } from '../firebase';
+import { Lock, ArrowRight, ShieldAlert, Loader2, KeyRound, User, Phone, Mail, Send, CheckCircle2, ChevronLeft, ExternalLink, LogIn } from 'lucide-react';
+import { db, auth } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
 
 // SECURITY CONFIG
 const MASTER_KEY = "Imissyoupapa@123";
@@ -16,7 +17,10 @@ interface Props {
 const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   const [mode, setMode] = useState<'enter' | 'request'>('enter');
   
-  // Auth State
+  // Auth Context
+  const { login, logout, user } = useAuth();
+  
+  // Local State
   const [accessKey, setAccessKey] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,7 +35,7 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
   useEffect(() => {
     checkSession();
-  }, []);
+  }, [user]); // Re-check if user auth state changes
 
   const getDeviceId = () => {
     let id = localStorage.getItem('hrp_device_id');
@@ -46,7 +50,19 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
     const sessionExpiry = localStorage.getItem('hrp_session_expiry');
     const storedKey = localStorage.getItem('hrp_access_key');
 
-    if (sessionExpiry && storedKey) {
+    // 1. Admin Session Check (Must be logged in with Firebase Auth)
+    if (storedKey === 'ADMIN123') {
+        if (user && user.email === ADMIN_EMAIL) {
+            setIsAuthenticated(true);
+        } else if (user && user.email !== ADMIN_EMAIL) {
+            // Logged in but wrong email
+            setError(`Signed in as ${user.email}, but this is not the Admin email.`);
+            setIsAuthenticated(false);
+        }
+        // If storedKey is Admin but user is null, we wait for Auth to load or show login
+    }
+    // 2. Regular User Session Check
+    else if (sessionExpiry && storedKey) {
       const now = Date.now();
       if (parseInt(sessionExpiry) > now) {
         setIsAuthenticated(true);
@@ -56,6 +72,7 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
         setError('Your session has expired. Please request a new key.');
       }
     }
+    
     setLoading(false);
   };
 
@@ -87,17 +104,39 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
     const key = accessKey.trim(); 
 
-    // 1. Master Admin Check
+    // --- 1. Master Admin Check ---
     if (key === MASTER_KEY) {
-        localStorage.setItem('hrp_access_key', 'ADMIN123');
-        localStorage.setItem('hrp_session_expiry', (Date.now() + 86400000).toString());
-        setIsAuthenticated(true);
-        onAdminAccess();
+        try {
+            // If already logged in
+            if (auth.currentUser?.email === ADMIN_EMAIL) {
+                localStorage.setItem('hrp_access_key', 'ADMIN123');
+                localStorage.setItem('hrp_session_expiry', (Date.now() + 86400000).toString());
+                onAdminAccess();
+                setIsAuthenticated(true);
+            } else {
+                // Trigger Google Login to get DB Access Token
+                await login();
+                
+                // Check email after login
+                if (auth.currentUser?.email === ADMIN_EMAIL) {
+                    localStorage.setItem('hrp_access_key', 'ADMIN123');
+                    localStorage.setItem('hrp_session_expiry', (Date.now() + 86400000).toString());
+                    onAdminAccess();
+                    setIsAuthenticated(true);
+                } else {
+                    throw new Error(`Access Denied: ${auth.currentUser?.email} is not an Admin.`);
+                }
+            }
+        } catch (err: any) {
+            console.error(err);
+            setError(err.message || "Admin Login Failed");
+            if (auth.currentUser) await logout();
+        }
         setLoading(false);
         return;
     }
 
-    // 2. Regular User Key Check
+    // --- 2. Regular User Key Check ---
     const formattedKey = key.toUpperCase();
 
     try {
@@ -270,6 +309,10 @@ const AccessGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                 >
                   {loading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : accessKey === MASTER_KEY ? (
+                    <>
+                       <LogIn className="w-5 h-5" /> Sign in as Admin
+                    </>
                   ) : (
                     <>
                       Unlock App <ArrowRight className="w-5 h-5" />

@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { collection, getDocs, query, orderBy, deleteDoc, doc, setDoc } from 'firebase/firestore';
-import { KeyRound, Plus, Trash2, Clock, MonitorSmartphone, RefreshCw, AlertCircle, Users, Mail, Check, X, Copy } from 'lucide-react';
-import { AccessKey, AccessRequest } from '../types';
+import { BackendService } from '../services/backend'; // Use Real Backend
+import { Subscription, License } from '../types';
+import { Users, Search, ShieldCheck, Smartphone, RefreshCw, AlertCircle, CheckCircle2, Lock, Unlock, LogOut } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'keys' | 'requests'>('requests');
-  const [keys, setKeys] = useState<AccessKey[]>([]);
-  const [requests, setRequests] = useState<AccessRequest[]>([]);
+  const { logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<'users' | 'licenses'>('users');
+  const [users, setUsers] = useState<Subscription[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
   const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  
-  // New State for displaying the generated key
-  const [generatedKeyData, setGeneratedKeyData] = useState<{key: string, user: string} | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -20,321 +18,172 @@ const AdminDashboard: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
-        if (activeTab === 'keys') {
-            await fetchKeys();
+        if (activeTab === 'users') {
+            const data = await BackendService.getAllUsers();
+            setUsers(data);
         } else {
-            await fetchRequests();
+            const data = await BackendService.getAllLicenses();
+            setLicenses(data);
         }
+    } catch (e: any) {
+        console.error(e);
+        setError('Failed to fetch data. Ensure you are an admin.');
     } finally {
         setLoading(false);
     }
   };
 
-  // --- KEYS LOGIC ---
-  const fetchKeys = async () => {
-      let fetchedKeys: AccessKey[] = [];
-      if (db) {
-          try {
-            const q = query(collection(db, 'access_keys'), orderBy('createdAt', 'desc'));
-            const snapshot = await getDocs(q);
-            fetchedKeys = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AccessKey[];
-          } catch(e) { console.warn("DB Keys fail"); }
-      }
-      
-      const local = JSON.parse(localStorage.getItem('hrp_admin_keys') || '[]');
-      const combined = [...fetchedKeys];
-      // Merge local keys that might not be in DB (if any)
-      local.forEach((lk: AccessKey) => {
-          if (!combined.find(k => k.id === lk.id)) combined.push(lk);
-      });
-      setKeys(combined.sort((a,b) => b.createdAt - a.createdAt));
+  const handleLogout = async () => {
+      await logout();
+      window.location.reload();
   };
 
-  const approveRequest = async (request: AccessRequest) => {
-      setGenerating(true);
+  const extendSubscription = async (uid: string) => {
+      if(!confirm("Extend subscription by 30 days?")) return;
       try {
-          const key = Math.random().toString(36).substring(2, 10).toUpperCase();
-          const now = Date.now();
-          const expiresAt = now + (24 * 60 * 60 * 1000); // 24 hours
-          
-          const newKeyObj: AccessKey = {
-              id: key,
-              key,
-              expiresAt,
-              createdAt: now,
-              deviceId: null
-          };
-
-          // 1. Save Key
-          if (db) {
-              await setDoc(doc(db, 'access_keys', key), newKeyObj);
-              // Also delete request
-              await deleteDoc(doc(db, 'access_requests', request.id));
-          } else {
-              saveLocalKey(newKeyObj);
-          }
-
-          // 2. Show Key to Admin
-          setGeneratedKeyData({ key, user: request.name });
-
-          // 3. Refresh
-          setRequests(prev => prev.filter(r => r.id !== request.id));
-          
-      } catch (error) {
-          console.error("Approval failed", error);
-          alert("Error approving request. Check console.");
-      } finally {
-          setGenerating(false);
-      }
-  };
-  
-  const manualGenerate = async () => {
-      const key = Math.random().toString(36).substring(2, 10).toUpperCase();
-      const now = Date.now();
-      const expiresAt = now + (24 * 60 * 60 * 1000);
-      const newKeyObj = { id: key, key, expiresAt, createdAt: now, deviceId: null };
-      
-      if(db) await setDoc(doc(db, 'access_keys', key), newKeyObj);
-      else saveLocalKey(newKeyObj);
-      
-      setGeneratedKeyData({ key, user: "Manual Generation" });
-      fetchKeys();
+        await BackendService.extendSubscription(uid);
+        fetchData();
+      } catch(e) { alert("Action failed"); }
   };
 
-  const saveLocalKey = (newKey: AccessKey) => {
-      const existing = JSON.parse(localStorage.getItem('hrp_admin_keys') || '[]');
-      localStorage.setItem('hrp_admin_keys', JSON.stringify([newKey, ...existing]));
+  const revokeLicense = async (licenseId: string) => {
+      if(!confirm("Revoke this license? User will be blocked immediately.")) return;
+       try {
+        await BackendService.revokeLicense(licenseId);
+        fetchData();
+      } catch(e) { alert("Action failed"); }
   };
 
-  const deleteKey = async (keyId: string) => {
-      if(!window.confirm("Revoke this key?")) return;
-      if (db) { try { await deleteDoc(doc(db, 'access_keys', keyId)); } catch(e) {} }
-      const existing = JSON.parse(localStorage.getItem('hrp_admin_keys') || '[]');
-      localStorage.setItem('hrp_admin_keys', JSON.stringify(existing.filter((k:any) => k.id !== keyId)));
-      fetchKeys();
-  };
-
-  // --- REQUESTS LOGIC ---
-  const fetchRequests = async () => {
-      if (!db) return;
-      
-      try {
-          const q = query(collection(db, 'access_requests'), orderBy('requestedAt', 'desc'));
-          const snapshot = await getDocs(q);
-          const fetchedReqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as AccessRequest[];
-          setRequests(fetchedReqs);
-      } catch (e: any) { 
-          console.error("DB Requests fail", e); 
-          if(e.code === 'permission-denied') {
-             alert("Error: Permission Denied. Please ensure your Firestore Rules are set to Test Mode (Public).");
-          }
-      }
-  };
-
-  const deleteRequest = async (id: string) => {
-      if (db) { try { await deleteDoc(doc(db, 'access_requests', id)); } catch(e){} }
-      setRequests(prev => prev.filter(r => r.id !== id));
-  };
-
-  const formatTimeLeft = (expiresAt: number) => {
-      const now = Date.now();
-      const left = expiresAt - now;
-      if (left <= 0) return "Expired";
-      const hours = Math.floor(left / (1000 * 60 * 60));
-      return `${hours}h ${Math.floor((left % (1000 * 60 * 60)) / (1000 * 60))}m`;
+  const unbindDevice = async (licenseId: string) => {
+      if(!confirm("Unbind device? User can login on a new device.")) return;
+       try {
+        await BackendService.unbindDevice(licenseId);
+        fetchData();
+      } catch(e) { alert("Action failed"); }
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto relative">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto min-h-screen bg-slate-50">
         
-        {/* KEY GENERATED MODAL */}
-        {generatedKeyData && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4">
-                <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-                    <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4 text-emerald-600">
-                        <Check className="w-8 h-8" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Key Generated!</h2>
-                    <p className="text-slate-500 mb-6">For user: <strong>{generatedKeyData.user}</strong></p>
-                    
-                    <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mb-6 flex items-center justify-between gap-4">
-                        <code className="text-2xl font-mono font-bold text-blue-600">{generatedKeyData.key}</code>
-                        <button 
-                            onClick={() => navigator.clipboard.writeText(generatedKeyData.key)}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
-                            title="Copy to clipboard"
-                        >
-                            <Copy className="w-5 h-5" />
-                        </button>
-                    </div>
-
-                    <p className="text-xs text-slate-400 mb-6">
-                        Copy this key and send it to the user via Email or WhatsApp.<br/>
-                        It is valid for 24 hours.
-                    </p>
-
-                    <button 
-                        onClick={() => setGeneratedKeyData(null)}
-                        className="w-full bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800"
-                    >
-                        Done
-                    </button>
-                </div>
-            </div>
-        )}
-
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex justify-between items-center mb-10">
             <div>
-                <h1 className="text-3xl font-bold text-slate-900">Admin Panel</h1>
-                <p className="text-slate-500">Manage requests and access keys.</p>
-                {!db && (
-                    <div className="flex items-center gap-2 mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded w-fit border border-red-100 font-bold">
-                        <AlertCircle className="w-3 h-3" />
-                        Database Not Connected - Requests won't appear here!
-                    </div>
-                )}
+                <h1 className="text-3xl font-bold text-slate-900">Admin Console</h1>
+                <p className="text-slate-500">Live Backend Mode</p>
             </div>
-            
-            <div className="flex gap-4">
-                <button 
-                    onClick={() => fetchData()}
-                    className="bg-white p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-500 transition-colors"
-                    title="Refresh Data"
-                >
+            <div className="flex gap-2">
+                <button onClick={fetchData} className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50">
                     <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
-                
-                <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm">
-                    <button 
-                        onClick={() => setActiveTab('requests')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'requests' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}
-                    >
-                        <Users className="w-4 h-4" /> Requests 
-                        {requests.length > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 rounded-full">{requests.length}</span>}
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('keys')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${activeTab === 'keys' ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:bg-slate-50'}`}
-                    >
-                        <KeyRound className="w-4 h-4" /> Active Keys
-                    </button>
-                </div>
+                <button onClick={handleLogout} className="p-2 bg-slate-900 text-white border border-slate-900 rounded-xl hover:bg-slate-800">
+                    <LogOut className="w-5 h-5" />
+                </button>
             </div>
         </div>
 
-        {/* --- REQUESTS TAB --- */}
-        {activeTab === 'requests' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                {!db && (
-                    <div className="p-6 text-center text-slate-500 border-b border-slate-100">
-                        <p className="font-bold text-red-500 mb-2">Setup Required</p>
-                        <p className="text-sm">You must configure Firebase in <code>firebase.ts</code> for requests to appear here.</p>
-                        <p className="text-xs mt-2">Currently, users are sending requests via Email only.</p>
-                    </div>
-                )}
-                
-                <table className="w-full text-left border-collapse">
+        {error && <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6">{error}</div>}
+
+        {/* Tabs */}
+        <div className="flex gap-6 mb-6 border-b border-slate-200">
+            <button 
+                onClick={() => setActiveTab('users')} 
+                className={`pb-4 px-2 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'users' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+                Subscribers ({users.length})
+            </button>
+            <button 
+                onClick={() => setActiveTab('licenses')} 
+                className={`pb-4 px-2 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors ${activeTab === 'licenses' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+                Device Licenses ({licenses.length})
+            </button>
+        </div>
+
+        {/* Content */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            
+            {activeTab === 'users' && (
+                <table className="w-full text-left">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">User</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Contact</th>
-                            <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Requested</th>
-                            <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase">Actions</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500">User ID</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500">Plan</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500">Status</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500">Expires</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {loading ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">Loading...</td></tr> : 
-                        requests.length === 0 ? <tr><td colSpan={4} className="p-8 text-center text-slate-400">
-                            No pending requests found.<br/>
-                            <span className="text-xs text-slate-300">If you expect requests, check Firestore Rules.</span>
-                        </td></tr> :
-                        requests.map(req => (
-                            <tr key={req.id} className="hover:bg-slate-50">
+                        {users.map(user => (
+                            <tr key={user.userId} className="hover:bg-slate-50">
+                                <td className="px-6 py-4 font-mono text-sm text-slate-600">{user.userId.substring(0,8)}...</td>
                                 <td className="px-6 py-4">
-                                    <div className="font-bold text-slate-800">{req.name}</div>
+                                    <span className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold uppercase">{user.planId}</span>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="text-sm text-slate-600 flex flex-col">
-                                        <span className="flex items-center gap-1"><Mail className="w-3 h-3"/> {req.email}</span>
-                                        <span className="flex items-center gap-1 mt-1"><MonitorSmartphone className="w-3 h-3"/> {req.mobile}</span>
-                                    </div>
+                                    {user.status === 'active' || user.status === 'trial'
+                                        ? <span className="flex items-center gap-1 text-emerald-600 font-bold text-xs"><CheckCircle2 className="w-3 h-3"/> {user.status.toUpperCase()}</span>
+                                        : <span className="flex items-center gap-1 text-red-500 font-bold text-xs"><AlertCircle className="w-3 h-3"/> {user.status}</span>
+                                    }
                                 </td>
-                                <td className="px-6 py-4 text-sm text-slate-500">
-                                    {new Date(req.requestedAt).toLocaleDateString()} {new Date(req.requestedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                <td className="px-6 py-4 text-sm text-slate-600">
+                                    {new Date(user.expiresAt).toLocaleDateString()}
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button 
-                                            onClick={() => approveRequest(req)}
-                                            disabled={generating}
-                                            className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 border border-emerald-200 transition-colors"
-                                        >
-                                            <Check className="w-3 h-3" /> Approve
-                                        </button>
-                                        <button 
-                                            onClick={() => deleteRequest(req.id)}
-                                            className="bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                                    <button onClick={() => extendSubscription(user.userId)} className="text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                                        + 30 Days
+                                    </button>
                                 </td>
                             </tr>
                         ))}
+                        {users.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-400">No active licenses found</td></tr>}
                     </tbody>
                 </table>
-            </div>
-        )}
+            )}
 
-        {/* --- KEYS TAB --- */}
-        {activeTab === 'keys' && (
-            <div className="space-y-4">
-                 <div className="flex justify-end">
-                    <button 
-                        onClick={manualGenerate} 
-                        disabled={generating}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-blue-200"
-                    >
-                        {generating ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Plus className="w-4 h-4"/>} Manual Gen
-                    </button>
-                 </div>
-                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 border-b border-slate-200">
-                            <tr>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Key</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Status</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Expires</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Device</th>
-                                <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase">Revoke</th>
+            {activeTab === 'licenses' && (
+                 <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                        <tr>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500">User</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500">Device</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500">State</th>
+                            <th className="px-6 py-4 font-bold text-xs uppercase text-slate-500 text-right">Security</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {licenses.map(lic => (
+                            <tr key={lic.id} className="hover:bg-slate-50">
+                                <td className="px-6 py-4 font-mono text-sm text-slate-600">{lic.userId.substring(0,8)}...</td>
+                                <td className="px-6 py-4">
+                                    <div className="text-sm font-bold text-slate-800">{lic.deviceLabel || 'Unknown Device'}</div>
+                                    <div className="text-xs font-mono text-slate-400">{lic.deviceId ? lic.deviceId.substring(0, 8) + '...' : 'Unbound'}</div>
+                                </td>
+                                <td className="px-6 py-4">
+                                    {lic.isRevoked
+                                        ? <span className="bg-red-50 text-red-600 px-2 py-1 rounded text-xs font-bold uppercase">REVOKED</span>
+                                        : <span className="bg-emerald-50 text-emerald-600 px-2 py-1 rounded text-xs font-bold uppercase">VALID</span>
+                                    }
+                                </td>
+                                <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                    <button onClick={() => unbindDevice(lic.userId)} className="text-slate-500 hover:text-blue-600 hover:bg-slate-100 p-2 rounded" title="Unbind Device">
+                                        <Unlock className="w-4 h-4"/>
+                                    </button>
+                                    {!lic.isRevoked && (
+                                        <button onClick={() => revokeLicense(lic.userId)} className="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2 rounded" title="Revoke Access">
+                                            <Lock className="w-4 h-4"/>
+                                        </button>
+                                    )}
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {keys.map(key => {
-                                const isExpired = Date.now() > key.expiresAt;
-                                return (
-                                    <tr key={key.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4 font-mono font-bold text-slate-800">{key.key}</td>
-                                        <td className="px-6 py-4">
-                                            {isExpired 
-                                                ? <span className="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-1 rounded-full">EXPIRED</span> 
-                                                : <span className="bg-emerald-100 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded-full">ACTIVE</span>
-                                            }
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600">{formatTimeLeft(key.expiresAt)}</td>
-                                        <td className="px-6 py-4 text-xs text-slate-400 truncate max-w-[100px]">{key.deviceId || 'Unclaimed'}</td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button onClick={() => deleteKey(key.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4"/></button>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                 </div>
-            </div>
-        )}
+                        ))}
+                         {licenses.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-slate-400">No licenses active</td></tr>}
+                    </tbody>
+                </table>
+            )}
+
+        </div>
     </div>
   );
 };

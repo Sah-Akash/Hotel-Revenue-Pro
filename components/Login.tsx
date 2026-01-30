@@ -1,18 +1,29 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Building2, CheckCircle2, ShieldCheck, ArrowRight, User } from 'lucide-react';
+import { Building2, CheckCircle2, ShieldCheck, ArrowRight, User, Loader2 } from 'lucide-react';
 
 const Login: React.FC = () => {
-  const { continueAsGuest } = useAuth();
+  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+          await login();
+      } catch (err: any) {
+          setError("Failed to sign in. Please try again.");
+          console.error(err);
+          setLoading(false);
+      }
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Background Gradients - Optimized */}
+        {/* Background Gradients */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-            {/* Simple Gradient for Mobile */}
             <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-indigo-900/20 md:hidden"></div>
-
-            {/* Heavy Blurs for Desktop Only */}
             <div className="hidden md:block absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[100px]"></div>
             <div className="hidden md:block absolute top-[30%] -right-[10%] w-[40%] h-[60%] bg-indigo-600/20 rounded-full blur-[100px]"></div>
         </div>
@@ -58,22 +69,29 @@ const Login: React.FC = () => {
                 <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl">
                     <div className="text-center mb-8">
                         <h2 className="text-2xl font-bold text-white mb-2">Get Started</h2>
-                        <p className="text-slate-400 text-sm">Access the financial modeling suite instantly.</p>
+                        <p className="text-slate-400 text-sm">Sign in with Google to access the app.</p>
                     </div>
 
+                    {error && (
+                        <div className="mb-4 bg-red-500/20 border border-red-500/50 p-3 rounded-lg text-red-200 text-sm text-center">
+                            {error}
+                        </div>
+                    )}
+
                     <button 
-                        onClick={continueAsGuest}
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-lg group"
+                        onClick={handleLogin}
+                        disabled={loading}
+                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-lg group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <User className="w-5 h-5" />
-                        <span>Launch App</span>
-                        <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity -ml-2 group-hover:ml-0" />
+                        {loading ? <Loader2 className="w-5 h-5 animate-spin"/> : <User className="w-5 h-5" />}
+                        <span>{loading ? 'Connecting...' : 'Sign in with Google'}</span>
+                        {!loading && <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity -ml-2 group-hover:ml-0" />}
                     </button>
 
                     <div className="mt-6 text-center">
                         <div className="flex items-center justify-center gap-2 text-slate-500 text-xs">
                             <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                            <span>No account required. Data stored locally.</span>
+                            <span>Secure Access • No Credit Card Required</span>
                         </div>
                     </div>
                 </div>

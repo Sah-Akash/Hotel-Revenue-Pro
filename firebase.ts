@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import * as firebaseAppModule from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
@@ -23,10 +23,13 @@ let analytics;
 
 try {
   // Use modular check to prevent re-initialization in strict mode/hot reload
-  if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
+  // Casting to any to workaround type definition issues where exported members are not found
+  const firebaseApp = firebaseAppModule as any;
+  
+  if (firebaseApp.getApps && firebaseApp.getApps().length > 0) {
+    app = firebaseApp.getApp();
   } else {
-    app = getApp();
+    app = firebaseApp.initializeApp(firebaseConfig);
   }
 
   auth = getAuth(app);

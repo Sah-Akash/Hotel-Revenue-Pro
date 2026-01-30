@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAdmin() {
+       return request.auth != null && request.auth.token.email == "aayansah17@gmail.com";
+    }
+
+    function isOwner(userId) {
+       return request.auth != null && request.auth.uid == userId;
+    }
+
+    // 1. PROJECTS (User Data)
+    match /projects/{projectId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if isOwner(resource.data.userId);
+    }
+
+    // 2. SUBSCRIPTIONS (The Source of Truth)
+    // Only Admins can WRITE subscriptions.
+    // Users can READ their own subscription.
+    match /subscriptions/{subId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow write: if isAdmin(); 
+    }
+
+    // 3. LICENSES (Device Binding)
+    // Users can create a license IF they have a valid subscription (This logic is usually in API, 
+    // but here we allow creation if they are auth'd, validation happens in app/rules).
+    // Ideally, a Cloud Function creates this, but for this architecture:
+    match /licenses/{licenseId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      // User can bind a device only if they are the owner
+      allow create: if isOwner(request.resource.data.userId);
+      // Only Admin can revoke or delete
+      allow update, delete: if isAdmin();
+    }
+    
+    // 4. AUDIT LOGS
+    match /audit_logs/{logId} {
+      allow create: if request.auth != null;
+      allow read: if isAdmin();
+    }
+  }
+}
