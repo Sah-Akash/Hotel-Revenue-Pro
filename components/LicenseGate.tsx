@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BackendService } from '../services/backend'; 
 import { generateDeviceFingerprint } from '../utils';
-import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, AlertTriangle, RefreshCw, WifiOff } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
@@ -28,8 +28,7 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
     if (user.email === ADMIN_EMAIL) {
         onAdminAccess();
-        // Admin always authorized, but we still run validation in background to ensure DB record exists?
-        // For now, let's just let them in.
+        // Allow admins to pass through immediately
         return; 
     }
 
@@ -67,10 +66,14 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
   if (authLoading || licenseState === 'checking') {
       if (!user) return <>{children}</>; 
+      
+      // If Admin, just show empty or small loader while routing happens
+      if (user.email === ADMIN_EMAIL) return <>{children}</>;
+
       return (
           <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-white">
               <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
-              <p className="text-slate-400 text-sm font-medium tracking-wide animate-pulse">Contacting Server...</p>
+              <p className="text-slate-400 text-sm font-medium tracking-wide animate-pulse">Verifying License...</p>
           </div>
       );
   }
@@ -138,15 +141,15 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                 {(licenseState === 'network_error' || licenseState === 'error') && (
                      <>
                         <div className="w-16 h-16 bg-yellow-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6 text-yellow-500">
-                            <AlertTriangle className="w-8 h-8" />
+                            <WifiOff className="w-8 h-8" />
                         </div>
-                        <h2 className="text-2xl font-bold text-white mb-2">Connection Failed</h2>
+                        <h2 className="text-2xl font-bold text-white mb-2">Connection Issue</h2>
                         <p className="text-slate-400 mb-4 text-sm">
-                            Could not communicate with the authentication server.
+                            Unable to verify license via Server or Client Fallback.
                         </p>
                         {errorMessage && (
                             <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg mb-6 text-left overflow-auto max-h-32">
-                                <p className="text-[10px] font-bold text-red-500 uppercase mb-1">Error Details:</p>
+                                <p className="text-[10px] font-bold text-red-500 uppercase mb-1">Debug Info:</p>
                                 <p className="text-xs font-mono text-red-300 break-words leading-relaxed">{errorMessage}</p>
                             </div>
                         )}
@@ -154,7 +157,7 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                             onClick={validateLicense} 
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 mb-3"
                         >
-                            <RefreshCw className="w-4 h-4" /> Retry
+                            <RefreshCw className="w-4 h-4" /> Retry Connection
                         </button>
                     </>
                 )}
