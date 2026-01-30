@@ -1,7 +1,7 @@
 import React from 'react';
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { LayoutDashboard, PieChart, Settings, HelpCircle, LogOut, Building2, X, ChevronRight, User, BookOpen } from 'lucide-react';
+import { LayoutDashboard, PieChart, Settings, HelpCircle, LogOut, Building2, X, ChevronRight, User, BookOpen, ShieldCheck } from 'lucide-react';
 
 interface Props {
   currentView: ViewType;
@@ -12,6 +12,9 @@ interface Props {
 
 const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }) => {
   const { user, logout } = useAuth();
+  
+  // Check if current session is Admin (Master Key)
+  const isAdmin = localStorage.getItem('hrp_access_key') === 'ADMIN123';
 
   const menuItems = [
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -21,9 +24,17 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
     { id: 'help', label: 'Support', icon: HelpCircle },
   ];
 
+  if (isAdmin) {
+      menuItems.push({ id: 'admin', label: 'Admin Panel', icon: ShieldCheck });
+  }
+
   const handleLogout = async () => {
+    // Also clear access key on logout if desired, or just auth
+    localStorage.removeItem('hrp_access_key');
+    localStorage.removeItem('hrp_session_expiry');
     await logout();
     onChangeView('login');
+    window.location.reload(); // Force re-gate
   };
 
   return (
@@ -117,9 +128,18 @@ const Sidebar: React.FC<Props> = ({ currentView, onChangeView, isOpen, onClose }
                     </button>
                 </div>
              ) : (
-                <div className="w-full bg-slate-800/50 text-slate-400 border border-slate-700/50 rounded-xl p-3.5 flex items-center justify-center gap-2 text-sm font-medium cursor-default">
-                    <User className="w-4 h-4" />
-                    Guest Mode
+                <div className="flex items-center justify-between w-full">
+                    <div className="text-slate-400 text-sm font-medium flex items-center gap-2">
+                        {isAdmin ? <ShieldCheck className="w-4 h-4 text-emerald-500" /> : <User className="w-4 h-4" />}
+                        {isAdmin ? 'Admin Mode' : 'Guest'}
+                    </div>
+                    <button 
+                        onClick={handleLogout}
+                        className="text-slate-500 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-all"
+                        title="Sign Out"
+                    >
+                        <LogOut className="w-4 h-4" />
+                    </button>
                 </div>
              )}
 

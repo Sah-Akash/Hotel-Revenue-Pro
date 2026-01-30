@@ -1,3 +1,4 @@
+
 export interface ExtraDeduction {
   id: string;
   name: string;
@@ -101,4 +102,21 @@ export interface UserProfile {
     photoURL: string | null;
 }
 
-export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'knowledge' | 'settings' | 'help' | 'login';
+export interface AccessKey {
+    id: string;
+    key: string;
+    expiresAt: number;
+    createdAt: number;
+    deviceId: string | null;
+}
+
+export interface AccessRequest {
+    id: string;
+    name: string;
+    email: string;
+    mobile: string;
+    requestedAt: number;
+    status: 'pending' | 'approved' | 'rejected';
+}
+
+export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'knowledge' | 'settings' | 'help' | 'login' | 'admin';

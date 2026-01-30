@@ -20,6 +20,7 @@ import Analytics from './components/Analytics';
 import Settings from './components/Settings';
 import Login from './components/Login';
 import KnowledgeBase from './components/KnowledgeBase';
+import AdminDashboard from './components/AdminDashboard'; // New Import
 
 import { Building2, Eye, EyeOff, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEAL_OTA_RATE } from './constants';
@@ -299,7 +300,7 @@ const App: React.FC = () => {
 
   // WRAP CONTENT IN ACCESS GATE
   return (
-    <AccessGate>
+    <AccessGate onAdminAccess={() => setView('admin')}>
         {authLoading ? (
             <div className="min-h-screen bg-slate-900 flex items-center justify-center">
                 <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
@@ -321,6 +322,12 @@ const App: React.FC = () => {
                     {/* Main Content Area */}
                     <div className="flex-1 overflow-hidden relative">
                         
+                        {view === 'admin' && (
+                            <div className="h-full overflow-y-auto bg-slate-50/50">
+                                <AdminDashboard />
+                            </div>
+                        )}
+
                         {view === 'editor' ? (
                         <div className="flex flex-col h-full bg-slate-50/50">
                             
@@ -394,13 +401,15 @@ const App: React.FC = () => {
                             </div>
                         </div>
                         ) : (
-                        <div className="h-full overflow-y-auto bg-slate-50/50 scroll-smooth">
-                            {view === 'dashboard' && <Dashboard projects={savedProjects} onCreateNew={handleCreateNew} onOpen={handleOpenProject} onDelete={handleDeleteProject} />}
-                            {view === 'analytics' && <Analytics projects={savedProjects} />}
-                            {view === 'knowledge' && <KnowledgeBase />}
-                            {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
-                            {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
-                        </div>
+                        view !== 'admin' && (
+                            <div className="h-full overflow-y-auto bg-slate-50/50 scroll-smooth">
+                                {view === 'dashboard' && <Dashboard projects={savedProjects} onCreateNew={handleCreateNew} onOpen={handleOpenProject} onDelete={handleDeleteProject} />}
+                                {view === 'analytics' && <Analytics projects={savedProjects} />}
+                                {view === 'knowledge' && <KnowledgeBase />}
+                                {view === 'settings' && <Settings settings={appSettings} onSave={handleSaveSettings} />}
+                                {view === 'help' && <div className="p-12 max-w-3xl mx-auto text-slate-600"><h1 className="text-3xl font-bold text-slate-900 mb-4">Help & Support</h1></div>}
+                            </div>
+                        )
                         )}
                     </div>
                 </div>
