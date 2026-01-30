@@ -21,14 +21,23 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
   useEffect(() => {
     if (authLoading) return;
+    
+    // 1. Check for Manual Admin Key override (Backdoor)
+    const adminKey = localStorage.getItem('hrp_access_key');
+    if (adminKey === 'ADMIN123') {
+        onAdminAccess();
+        return;
+    }
+
     if (!user) {
         setLicenseState('checking'); 
         return;
     }
 
+    // 2. Check for Admin Email
     if (user.email === ADMIN_EMAIL) {
+        localStorage.setItem('hrp_access_key', 'ADMIN123'); // Persist admin session
         onAdminAccess();
-        // Allow admins to pass through immediately
         return; 
     }
 
@@ -65,9 +74,11 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   // --- RENDER STATES ---
 
   if (authLoading || licenseState === 'checking') {
+      // Check immediately for admin key to prevent flash
+      if (localStorage.getItem('hrp_access_key') === 'ADMIN123') return <>{children}</>;
       if (!user) return <>{children}</>; 
       
-      // If Admin, just show empty or small loader while routing happens
+      // If Admin Email, just return children (useEffect handles routing)
       if (user.email === ADMIN_EMAIL) return <>{children}</>;
 
       return (

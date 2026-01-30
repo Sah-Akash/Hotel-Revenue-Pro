@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Building2, CheckCircle2, ShieldCheck, ArrowRight, User, Loader2 } from 'lucide-react';
+import { Building2, CheckCircle2, ShieldCheck, ArrowRight, User, Loader2, KeyRound } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Hidden Admin Login State
+  const [clickCount, setClickCount] = useState(0);
+  const [showAdminInput, setShowAdminInput] = useState(false);
+  const [adminKey, setAdminKey] = useState('');
 
   const handleLogin = async () => {
       setLoading(true);
@@ -16,6 +21,26 @@ const Login: React.FC = () => {
           setError("Failed to sign in. Please try again.");
           console.error(err);
           setLoading(false);
+      }
+  };
+
+  const handleLogoClick = () => {
+      const newCount = clickCount + 1;
+      setClickCount(newCount);
+      if (newCount >= 5) {
+          setShowAdminInput(true);
+          setClickCount(0);
+      }
+  };
+
+  const handleAdminSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (adminKey === "Imissyoupapa@123") {
+          localStorage.setItem('hrp_access_key', 'ADMIN123');
+          // Force reload to trigger LicenseGate admin check
+          window.location.reload();
+      } else {
+          setError("Invalid Master Key");
       }
   };
 
@@ -32,7 +57,11 @@ const Login: React.FC = () => {
             
             {/* Left Column: Value Prop */}
             <div className="text-white space-y-8">
-                <div className="flex items-center gap-3 mb-4">
+                <div 
+                    className="flex items-center gap-3 mb-4 cursor-pointer select-none" 
+                    onClick={handleLogoClick}
+                    title="Click 5 times for Admin Access"
+                >
                      <div className="bg-blue-600 p-2 rounded-xl">
                         <Building2 className="w-6 h-6 text-white" />
                      </div>
@@ -66,10 +95,12 @@ const Login: React.FC = () => {
 
             {/* Right Column: Login Card */}
             <div className="flex justify-center lg:justify-end">
-                <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl">
+                <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl transition-all">
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-white mb-2">Get Started</h2>
-                        <p className="text-slate-400 text-sm">Sign in with Google to access the app.</p>
+                        <h2 className="text-2xl font-bold text-white mb-2">{showAdminInput ? 'Admin Access' : 'Get Started'}</h2>
+                        <p className="text-slate-400 text-sm">
+                            {showAdminInput ? 'Enter Master Key to bypass login.' : 'Sign in with Google to access the app.'}
+                        </p>
                     </div>
 
                     {error && (
@@ -78,15 +109,34 @@ const Login: React.FC = () => {
                         </div>
                     )}
 
-                    <button 
-                        onClick={handleLogin}
-                        disabled={loading}
-                        className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-lg group disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin"/> : <User className="w-5 h-5" />}
-                        <span>{loading ? 'Connecting...' : 'Sign in with Google'}</span>
-                        {!loading && <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity -ml-2 group-hover:ml-0" />}
-                    </button>
+                    {!showAdminInput ? (
+                        <button 
+                            onClick={handleLogin}
+                            disabled={loading}
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 shadow-lg group disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading ? <Loader2 className="w-5 h-5 animate-spin"/> : <User className="w-5 h-5" />}
+                            <span>{loading ? 'Connecting...' : 'Sign in with Google'}</span>
+                            {!loading && <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity -ml-2 group-hover:ml-0" />}
+                        </button>
+                    ) : (
+                        <form onSubmit={handleAdminSubmit} className="space-y-4">
+                             <div className="relative">
+                                <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                                <input
+                                    type="password"
+                                    value={adminKey}
+                                    onChange={(e) => setAdminKey(e.target.value)}
+                                    placeholder="Master Key"
+                                    className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3.5 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+                                />
+                             </div>
+                             <div className="grid grid-cols-2 gap-3">
+                                <button type="button" onClick={() => setShowAdminInput(false)} className="bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-xl font-bold text-sm">Cancel</button>
+                                <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 text-white py-3 rounded-xl font-bold text-sm">Enter</button>
+                             </div>
+                        </form>
+                    )}
 
                     <div className="mt-6 text-center">
                         <div className="flex items-center justify-center gap-2 text-slate-500 text-xs">
