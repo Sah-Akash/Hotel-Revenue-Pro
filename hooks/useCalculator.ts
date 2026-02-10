@@ -36,13 +36,23 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
     const monthlyRevenue = dailyRevenue * DAYS_IN_MONTH;
     const yearlyRevenue = dailyRevenue * DAYS_IN_YEAR;
 
+    // --- REVENUE SHARE LOGIC (Based on User Image) ---
+    // Image Logic: Revenue - (12% Tax/Insurance) = Net Base for Share
+    // 8190000 Gross -> 7207200 Net. (8190000 * 0.88 = 7207200). Matches exactly.
+    const taxDeductionRate = 0.12; 
+    const monthlyTaxDeduction = monthlyRevenue * taxDeductionRate;
+    const netRevenueForShare = monthlyRevenue - monthlyTaxDeduction; // The "Net" column in image
+
     // --- DEAL SHEET SPECIFIC CALCULATIONS ---
-    const dealRevenueNetGst = monthlyRevenue / (1 + GST_RATE);
-    const dealMonthlyGst = monthlyRevenue - dealRevenueNetGst;
+    // We use the same Net Revenue logic for consistency
+    const dealRevenueNetGst = netRevenueForShare; 
+    const dealMonthlyGst = monthlyTaxDeduction;
+    
+    // Expenses
     const dealOtaAbs = dealRevenueNetGst * (otaPercent / 100);
     const dealOpexAbs = soldRooms * DAYS_IN_MONTH * maintenanceCostPerRoom;
     
-    // Core Business Logic: NOI Before MG
+    // Core Business Logic: NOI Before MG (Net Operating Income)
     const noiBeforeMg = dealRevenueNetGst - dealOtaAbs - dealOpexAbs;
 
     // Absolute CM (Net Profit)
@@ -56,46 +66,48 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
     const dealPbpPercent = dealAbsoluteCm > 0 ? (totalInvestment / dealAbsoluteCm) * 100 : 0;
     const dealMgImpactSixMonths = (dealRevenueNetGst * 0.10) * 6;
 
-    // --- REVERSE CALCULATIONS (Advanced Logic) ---
+    // --- STRATEGY ENGINE (30-Year Veteran Logic) ---
     
-    // 1. Max Safe MG (Buffer of 25% margin safety)
-    const maxSafeMg = Math.max(0, noiBeforeMg * 0.75);
+    // 1. Max Safe MG (Buffer of 30% margin safety)
+    // A safe fixed rent should not exceed 70% of your NOI.
+    const maxSafeMg = Math.max(0, noiBeforeMg * 0.70);
 
     // 2. Target MG for 24% ROI (Aggressive Target)
     const effectiveEquity = inputs.includeFinancials ? Math.max(propertyValue - loanAmount, 0) : totalInvestment;
     const targetAnnualReturn = effectiveEquity * 0.24; // 24% annual return
     const targetMgFor20Roi = Math.max(0, (noiBeforeMg * 12 - targetAnnualReturn) / 12);
 
-    // 3. HYBRID MODEL CALCULATION (The "Smart Structure")
-    // Goal: Lower Fixed MG to 50% of NOI (Very Safe), give 15-20% Share on Gross Rev
-    // This aligns incentives. If revenue drops, you survive. If revenue flies, owner wins.
-    const hybridFixedMg = noiBeforeMg * 0.50; // Base Guarantee (Covering your risk)
-    const hybridRevSharePercent = 15; // 15% Share of Net Revenue
-    const hybridVariablePayout = dealRevenueNetGst * (hybridRevSharePercent / 100);
-    const hybridProjectedPayout = hybridFixedMg + hybridVariablePayout;
+    // 3. HYBRID MODEL (MG + RevShare)
+    // Standard Industry Hybrid: "Minimum Guarantee OR % Share, whichever is higher"
+    // We propose a lower "Safety MG" (to cover owner's EMIs) + a Share %
+    
+    // Proposed Hybrid Params
+    const hybridFixedMg = maxSafeMg; // We propose the Max Safe MG as the base
+    const hybridRevSharePercent = 45; // 45% of Net Revenue (Standard Split is 40-50%)
+    
+    // Projected Payout Calculation: Max(MG, Share)
+    const shareAmount = netRevenueForShare * (hybridRevSharePercent / 100);
+    const hybridProjectedPayout = Math.max(hybridFixedMg, shareAmount);
 
-
-    // 4. Recommendation Engine
+    // 4. Recommendation Logic
     let recommendedDealType: 'lessee' | 'owner' | 'hybrid' = 'hybrid';
     let dealStrengthScore = 50;
 
-    // Calculate Score based on risk
-    const occupancyScore = occupancyPercent; // 60
-    const marginScore = dealRevenueNetGst > 0 ? (noiBeforeMg / dealRevenueNetGst) * 100 : 0; // ~40%
-    dealStrengthScore = (occupancyScore * 0.6) + (marginScore * 0.4);
+    // Score: Higher Occupancy/Margin = Safer for Lessee (Fixed Rent)
+    // Lower = Safer for Owner (Rev Share)
+    const occupancyScore = occupancyPercent; 
+    const marginScore = dealRevenueNetGst > 0 ? (noiBeforeMg / dealRevenueNetGst) * 100 : 0; 
+    dealStrengthScore = (occupancyScore * 0.5) + (marginScore * 0.5);
 
     if (dealStrengthScore > 65 && metricsIsStable(inputs)) {
-        // High Occupancy + High Margin + Stable = Safe to take fixed obligation
-        recommendedDealType = 'lessee'; 
+        recommendedDealType = 'lessee'; // High confidence? Lock in fixed rent.
     } else if (dealStrengthScore < 45 || occupancyPercent < 50) {
-        // Low Occupancy/Margin = High Risk, stay Owner/RevShare
-        recommendedDealType = 'owner'; 
+        recommendedDealType = 'owner'; // Volatile? Rev Share only.
     } else {
-        // The sweet spot for negotiation
-        recommendedDealType = 'hybrid';
+        recommendedDealType = 'hybrid'; // The golden middle.
     }
 
-    // --- STANDARD LEGACY METRICS ---
+    // --- STANDARD METRICS ---
     const dailyOta = dailyRevenue * OTA_COMMISSION_RATE;
     const monthlyOta = monthlyRevenue * OTA_COMMISSION_RATE;
     const yearlyOta = yearlyRevenue * OTA_COMMISSION_RATE;
@@ -197,7 +209,6 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
   }, [inputs]);
 };
 
-// Helper: Basic heuristic for stability
 function metricsIsStable(inputs: InputState): boolean {
     return inputs.occupancyPercent >= 60 && inputs.totalRooms >= 20;
 }
