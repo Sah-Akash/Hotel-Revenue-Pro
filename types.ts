@@ -49,6 +49,11 @@ export interface CalculationMetrics {
   targetMgFor20Roi: number; // Reverse calc for 20% ROI
   recommendedDealType: 'lessee' | 'owner' | 'hybrid';
   dealStrengthScore: number; // 0-100
+
+  // Hybrid Model specifics
+  hybridFixedMg: number; // The "Safe" base MG
+  hybridRevSharePercent: number; // The % to offer on top
+  hybridProjectedPayout: number; // Total payout to owner in this model
 }
 
 export interface InputState {

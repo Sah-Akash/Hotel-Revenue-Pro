@@ -56,20 +56,26 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
     const dealPbpPercent = dealAbsoluteCm > 0 ? (totalInvestment / dealAbsoluteCm) * 100 : 0;
     const dealMgImpactSixMonths = (dealRevenueNetGst * 0.10) * 6;
 
-    // --- REVERSE CALCULATIONS (New Logic) ---
+    // --- REVERSE CALCULATIONS (Advanced Logic) ---
     
-    // 1. Max Safe MG (Buffer of 20% margin safety)
-    // A safe deal usually means the MG shouldn't exceed 70-80% of the NOI (Net Operating Income)
+    // 1. Max Safe MG (Buffer of 25% margin safety)
     const maxSafeMg = Math.max(0, noiBeforeMg * 0.75);
 
     // 2. Target MG for 24% ROI (Aggressive Target)
-    // Formula: (Annual NOI - (Equity * 0.24)) / 12 = Max Monthly MG
-    // Equity = SD + BA (or Property Value - Loan if Owner view, but let's assume Deal view)
     const effectiveEquity = inputs.includeFinancials ? Math.max(propertyValue - loanAmount, 0) : totalInvestment;
     const targetAnnualReturn = effectiveEquity * 0.24; // 24% annual return
     const targetMgFor20Roi = Math.max(0, (noiBeforeMg * 12 - targetAnnualReturn) / 12);
 
-    // 3. Recommendation Engine
+    // 3. HYBRID MODEL CALCULATION (The "Smart Structure")
+    // Goal: Lower Fixed MG to 50% of NOI (Very Safe), give 15-20% Share on Gross Rev
+    // This aligns incentives. If revenue drops, you survive. If revenue flies, owner wins.
+    const hybridFixedMg = noiBeforeMg * 0.50; // Base Guarantee (Covering your risk)
+    const hybridRevSharePercent = 15; // 15% Share of Net Revenue
+    const hybridVariablePayout = dealRevenueNetGst * (hybridRevSharePercent / 100);
+    const hybridProjectedPayout = hybridFixedMg + hybridVariablePayout;
+
+
+    // 4. Recommendation Engine
     let recommendedDealType: 'lessee' | 'owner' | 'hybrid' = 'hybrid';
     let dealStrengthScore = 50;
 
@@ -78,12 +84,15 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
     const marginScore = dealRevenueNetGst > 0 ? (noiBeforeMg / dealRevenueNetGst) * 100 : 0; // ~40%
     dealStrengthScore = (occupancyScore * 0.6) + (marginScore * 0.4);
 
-    if (dealStrengthScore > 65) {
-        // High Occupancy + High Margin = Safe to take fixed obligation
-        recommendedDealType = 'lessee'; // Take the lease, keep the upside
-    } else if (dealStrengthScore < 40) {
-        // Low Occupancy/Margin = High Risk
-        recommendedDealType = 'owner'; // Stay as Owner (Rev Share) to avoid MG trap
+    if (dealStrengthScore > 65 && metricsIsStable(inputs)) {
+        // High Occupancy + High Margin + Stable = Safe to take fixed obligation
+        recommendedDealType = 'lessee'; 
+    } else if (dealStrengthScore < 45 || occupancyPercent < 50) {
+        // Low Occupancy/Margin = High Risk, stay Owner/RevShare
+        recommendedDealType = 'owner'; 
+    } else {
+        // The sweet spot for negotiation
+        recommendedDealType = 'hybrid';
     }
 
     // --- STANDARD LEGACY METRICS ---
@@ -180,7 +189,15 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
       maxSafeMg,
       targetMgFor20Roi,
       recommendedDealType,
-      dealStrengthScore
+      dealStrengthScore,
+      hybridFixedMg,
+      hybridRevSharePercent,
+      hybridProjectedPayout
     };
   }, [inputs]);
 };
+
+// Helper: Basic heuristic for stability
+function metricsIsStable(inputs: InputState): boolean {
+    return inputs.occupancyPercent >= 60 && inputs.totalRooms >= 20;
+}
