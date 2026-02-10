@@ -13,6 +13,7 @@ import PrintableInputSummary from './components/PrintableInputSummary';
 import SummaryCards from './components/SummaryCards';
 import FinancialOverview from './components/FinancialOverview';
 import DealSummary from './components/DealSummary'; 
+import DealSuggestions from './components/DealSuggestions'; // NEW
 import RevenueTable from './components/RevenueTable';
 import Visuals from './components/Visuals';
 import Dashboard from './components/Dashboard';
@@ -22,12 +23,24 @@ import Settings from './components/Settings';
 import Login from './components/Login';
 import KnowledgeBase from './components/KnowledgeBase';
 import AdminDashboard from './components/AdminDashboard'; 
-import Support from './components/Support'; // ADDED
+import Support from './components/Support'; 
 
-import { Building2, Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Loader2, Download, FileSpreadsheet, ArrowLeft, Save, CheckCircle, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { MAINTENANCE_BASE_COST, DEFAULT_LOAN_INTEREST, DEAL_OTA_RATE } from './constants';
 
-// Default initial state
+const PremiumLogo = ({ className = "w-6 h-6" }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M50 10L90 30V70L50 90L10 70V30L50 10Z" fill="url(#app-logo-grad)" stroke="white" strokeWidth="2" />
+    <path d="M50 25V75M25 38L75 62M75 38L25 62" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <defs>
+      <linearGradient id="app-logo-grad" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#f59e0b" />
+        <stop offset="1" stopColor="#b45309" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 const INITIAL_INPUTS: InputState = {
   hotelName: '',
   totalRooms: 32,
@@ -298,8 +311,8 @@ const App: React.FC = () => {
         setView('admin');
     }}>
         {authLoading ? (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-                <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
+            <div className="min-h-screen bg-[#020617] flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
             </div>
         ) : view === 'login' ? (
             <Login />
@@ -316,9 +329,14 @@ const App: React.FC = () => {
                 <div className="flex-1 flex flex-col h-full overflow-hidden relative">
                     
                     {/* Mobile Header */}
-                    <div className="lg:hidden h-16 bg-white border-b border-slate-100 flex items-center justify-between px-4 shrink-0 z-40">
-                        <div className="flex items-center gap-2 font-bold text-slate-800"><Building2 className="w-5 h-5 text-blue-600" />RevenuePro</div>
-                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 text-slate-600"><Menu className="w-6 h-6" /></button>
+                    <div className="lg:hidden h-24 bg-[#020617] flex items-center justify-between px-8 shrink-0 z-40 border-b border-white/[0.05] shadow-2xl">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+                                <PremiumLogo className="w-7 h-7" />
+                            </div>
+                            <span className="font-black text-white tracking-tighter text-xl uppercase">REVENUE<span className="font-light text-slate-700 tracking-[0.2em] ml-2">PRO</span></span>
+                        </div>
+                        <button onClick={() => setIsSidebarOpen(true)} className="p-3 text-slate-500 hover:text-white transition-colors"><Menu className="w-8 h-8" /></button>
                     </div>
 
                     {/* Main Content Area */}
@@ -380,6 +398,10 @@ const App: React.FC = () => {
                                 <main className="flex-1 overflow-y-auto bg-slate-50/50 p-4 md:p-8 relative" id="report-content">
                                     <div className="max-w-6xl mx-auto space-y-8 pb-20">
                                         <SummaryCards metrics={metrics} occupancyPercent={inputs.occupancyPercent} roomPrice={inputs.roomPrice} />
+                                        
+                                        {/* NEW SUGGESTIONS AREA */}
+                                        <DealSuggestions metrics={metrics} inputs={inputs} />
+                                        
                                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                                             <div className="xl:col-span-2 space-y-8">
                                                 <Visuals metrics={metrics} inputs={inputs} />
@@ -396,7 +418,7 @@ const App: React.FC = () => {
 
                                 <button 
                                     onClick={() => setIsInputPanelOpen(!isInputPanelOpen)}
-                                    className={`xl:hidden absolute bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl text-white transition-all ${isInputPanelOpen ? 'bg-slate-900 rotate-180' : 'bg-blue-600'}`}
+                                    className={`xl:hidden absolute bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl text-white transition-all ${isInputPanelOpen ? 'bg-slate-900 rotate-180' : 'bg-indigo-600'}`}
                                 >
                                 {isInputPanelOpen ? <ArrowLeft className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                                 </button>

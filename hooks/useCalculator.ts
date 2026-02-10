@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react';
 import { CalculationMetrics, InputState } from '../types';
 import { DAYS_IN_MONTH, DAYS_IN_YEAR, OTA_COMMISSION_RATE, DEFAULT_CAP_RATE, GST_RATE } from '../constants';
@@ -25,58 +26,68 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
     const occupancyDecimal = occupancyPercent / 100;
 
     // 1. SRN (Sold Rooms per Night)
-    // Note: For Deal Sheet display "SRNs" is often Inventory, but calculation uses sold.
-    // We calculate Actual Sold Rooms here.
     let soldRooms = totalRooms * occupancyDecimal;
     if (roundSRN) {
       soldRooms = Math.round(soldRooms);
     }
     
-    // Display SRN (Inventory) comes directly from inputs.totalRooms for the table
-
     // 2. Daily Revenue (Expected Revenue - Gross)
     const dailyRevenue = soldRooms * roomPrice;
-
-    // 3. Monthly Revenue (Expected Revenue)
     const monthlyRevenue = dailyRevenue * DAYS_IN_MONTH;
-
-    // 4. Yearly Revenue
     const yearlyRevenue = dailyRevenue * DAYS_IN_YEAR;
 
-    // --- DEAL SHEET SPECIFIC CALCULATIONS (Matching Image Logic) ---
-
-    // Rev minus GST = Exp Revenue / (1 + GST)
+    // --- DEAL SHEET SPECIFIC CALCULATIONS ---
     const dealRevenueNetGst = monthlyRevenue / (1 + GST_RATE);
     const dealMonthlyGst = monthlyRevenue - dealRevenueNetGst;
-
-    // OTA Approx = (Rev minus GST) * (OTA% / 100)
-    // Note: Image had 143438 for 2049107 Net Rev => ~7%
     const dealOtaAbs = dealRevenueNetGst * (otaPercent / 100);
-
-    // Opex Abs Value = Sold Rooms * 30 * OpexPerURN
-    // Note: Image had 499500 for 45 sold rooms * 370 * 30.
     const dealOpexAbs = soldRooms * DAYS_IN_MONTH * maintenanceCostPerRoom;
+    
+    // Core Business Logic: NOI Before MG
+    const noiBeforeMg = dealRevenueNetGst - dealOtaAbs - dealOpexAbs;
 
-    // Absolute CM = RevNet - OTA - Opex - MG
-    // Note: Image 2049107 - 143438 - 499500 - 1200000 = 206169. (Image 206170). Matches.
-    const dealAbsoluteCm = dealRevenueNetGst - dealOtaAbs - dealOpexAbs - monthlyMg;
+    // Absolute CM (Net Profit)
+    const dealAbsoluteCm = noiBeforeMg - monthlyMg;
 
-    // CM% = (Absolute CM / RevNet) * 100
-    // Note: Image 206170 / 2049107 = 10%.
+    // CM% 
     const dealCmPercent = dealRevenueNetGst > 0 ? (dealAbsoluteCm / dealRevenueNetGst) * 100 : 0;
 
-    // PBP = ((BA + SD) / Absolute CM) * 100
-    // Note: Image 1500000 / 206170 = 7.27 => 728%.
+    // PBP
     const totalInvestment = securityDeposit + businessAdvance;
     const dealPbpPercent = dealAbsoluteCm > 0 ? (totalInvestment / dealAbsoluteCm) * 100 : 0;
-
-    // MG Impact 6 Months (Text from Prompt)
     const dealMgImpactSixMonths = (dealRevenueNetGst * 0.10) * 6;
 
+    // --- REVERSE CALCULATIONS (New Logic) ---
+    
+    // 1. Max Safe MG (Buffer of 20% margin safety)
+    // A safe deal usually means the MG shouldn't exceed 70-80% of the NOI (Net Operating Income)
+    const maxSafeMg = Math.max(0, noiBeforeMg * 0.75);
 
-    // --- STANDARD LEGACY METRICS (For Dashboard/Visuals) ---
-    // Approximations using standard formulas for visuals
-    const dailyOta = dailyRevenue * OTA_COMMISSION_RATE; // 18% of Gross
+    // 2. Target MG for 24% ROI (Aggressive Target)
+    // Formula: (Annual NOI - (Equity * 0.24)) / 12 = Max Monthly MG
+    // Equity = SD + BA (or Property Value - Loan if Owner view, but let's assume Deal view)
+    const effectiveEquity = inputs.includeFinancials ? Math.max(propertyValue - loanAmount, 0) : totalInvestment;
+    const targetAnnualReturn = effectiveEquity * 0.24; // 24% annual return
+    const targetMgFor20Roi = Math.max(0, (noiBeforeMg * 12 - targetAnnualReturn) / 12);
+
+    // 3. Recommendation Engine
+    let recommendedDealType: 'lessee' | 'owner' | 'hybrid' = 'hybrid';
+    let dealStrengthScore = 50;
+
+    // Calculate Score based on risk
+    const occupancyScore = occupancyPercent; // 60
+    const marginScore = dealRevenueNetGst > 0 ? (noiBeforeMg / dealRevenueNetGst) * 100 : 0; // ~40%
+    dealStrengthScore = (occupancyScore * 0.6) + (marginScore * 0.4);
+
+    if (dealStrengthScore > 65) {
+        // High Occupancy + High Margin = Safe to take fixed obligation
+        recommendedDealType = 'lessee'; // Take the lease, keep the upside
+    } else if (dealStrengthScore < 40) {
+        // Low Occupancy/Margin = High Risk
+        recommendedDealType = 'owner'; // Stay as Owner (Rev Share) to avoid MG trap
+    }
+
+    // --- STANDARD LEGACY METRICS ---
+    const dailyOta = dailyRevenue * OTA_COMMISSION_RATE;
     const monthlyOta = monthlyRevenue * OTA_COMMISSION_RATE;
     const yearlyOta = yearlyRevenue * OTA_COMMISSION_RATE;
 
@@ -93,7 +104,6 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
     const monthlyNet = monthlyRevenue - (monthlyOta + monthlyMaintenance + monthlyExtra);
     const yearlyNet = yearlyRevenue - (yearlyOta + yearlyMaintenance + yearlyExtra);
 
-    // Financials
     let monthlyEMI = 0;
     let yearlyEMI = 0;
     let monthlyCashFlow = monthlyNet;
@@ -119,9 +129,8 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
        paybackPeriod = yearlyNet > 0 ? propertyValue / yearlyNet : 999;
     }
 
-    // --- INSIGHTS ---
     const breakEvenOccupancyDeal = dealAbsoluteCm < 0 
-        ? occupancyPercent + (Math.abs(dealAbsoluteCm) / (dealRevenueNetGst/occupancyPercent)) // Rough linear approx
+        ? occupancyPercent + (Math.abs(dealAbsoluteCm) / (dealRevenueNetGst/occupancyPercent)) 
         : occupancyPercent - (dealAbsoluteCm / (dealRevenueNetGst/occupancyPercent)); 
 
     const deltaGross = 100 * soldRooms * 30;
@@ -130,7 +139,7 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
     const arrSensitivity = deltaNetGst - deltaOta;
 
     return {
-      srn: soldRooms, // Export sold rooms for other charts, but display total rooms in Deal Table
+      srn: soldRooms,
       dailyRevenue,
       monthlyRevenue,
       yearlyRevenue,
@@ -154,8 +163,6 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
       roi,
       valuation,
       paybackPeriod,
-      
-      // Deal Specifics
       dealMonthlyGst,
       dealRevenueNetGst,
       dealOtaAbs,
@@ -165,9 +172,15 @@ export const useCalculator = (inputs: InputState): CalculationMetrics => {
       dealPbpPercent,
       dealMgImpactSixMonths,
       monthlyMg,
-      operatorProfit: dealAbsoluteCm, // In this deal view, Absolute CM is the bottom line
+      operatorProfit: dealAbsoluteCm,
       breakEvenOccupancyDeal,
-      arrSensitivity
+      arrSensitivity,
+      // New Exports
+      noiBeforeMg,
+      maxSafeMg,
+      targetMgFor20Roi,
+      recommendedDealType,
+      dealStrengthScore
     };
   }, [inputs]);
 };

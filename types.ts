@@ -42,6 +42,13 @@ export interface CalculationMetrics {
   arrSensitivity: number;
   monthlyMg: number;
   operatorProfit: number;
+  
+  // New Recommendation Metrics
+  noiBeforeMg: number;
+  maxSafeMg: number; // The MG amount that keeps the deal safe
+  targetMgFor20Roi: number; // Reverse calc for 20% ROI
+  recommendedDealType: 'lessee' | 'owner' | 'hybrid';
+  dealStrengthScore: number; // 0-100
 }
 
 export interface InputState {
