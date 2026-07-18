@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BackendService } from '../services/backend'; 
 import { generateDeviceFingerprint } from '../utils';
-import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, AlertTriangle, RefreshCw, WifiOff, Mail, ExternalLink, Ban, Sparkles, Check, CreditCard, X, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldAlert, MonitorX, Lock, LogOut, AlertTriangle, RefreshCw, WifiOff, Mail, ExternalLink, Ban, Sparkles, Check, CreditCard, X, ShieldCheck, Copy, Clock, Send } from 'lucide-react';
 
 interface Props {
   children: React.ReactNode;
@@ -25,11 +25,59 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
   const [selectedPlan, setSelectedPlan] = useState<'pro_monthly' | 'pro_quarterly' | 'pro_yearly'>('pro_monthly');
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
   
-  // Checkout Form Details
+  // UPI / Manual verification states
+  const [paymentPending, setPaymentPending] = useState(false);
+  const [paymentSubmittedAt, setPaymentSubmittedAt] = useState<number | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(900); // 15 mins
+  const [isCopied, setIsCopied] = useState(false);
+  const [isUidCopied, setIsUidCopied] = useState(false);
+
+  // Checkout Form Details (Kept for backwards compatibility but not used in UPI)
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
   const [cardName, setCardName] = useState('');
+
+  // Load payment pending state on mount / user change
+  useEffect(() => {
+    if (!user) return;
+    const pending = localStorage.getItem(`hrp_payment_pending_${user.uid}`) === 'true';
+    const submittedAtStr = localStorage.getItem(`hrp_payment_submitted_at_${user.uid}`);
+    if (pending && submittedAtStr) {
+        const submittedAt = parseInt(submittedAtStr, 10);
+        const elapsed = Math.floor((Date.now() - submittedAt) / 1000);
+        if (elapsed < 900) {
+            setPaymentPending(true);
+            setPaymentSubmittedAt(submittedAt);
+            setTimeLeft(900 - elapsed);
+        } else {
+            setPaymentPending(true);
+            setPaymentSubmittedAt(submittedAt);
+            setTimeLeft(0);
+        }
+    } else {
+        setPaymentPending(false);
+        setPaymentSubmittedAt(null);
+    }
+  }, [user]);
+
+  // Handle countdown interval
+  useEffect(() => {
+    if (!paymentPending || !paymentSubmittedAt) return;
+    
+    const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - paymentSubmittedAt) / 1000);
+        const remaining = 900 - elapsed;
+        if (remaining <= 0) {
+            setTimeLeft(0);
+            clearInterval(interval);
+        } else {
+            setTimeLeft(remaining);
+        }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [paymentPending, paymentSubmittedAt]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -78,6 +126,12 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
         if (result.authorized) {
             setLicenseState('authorized');
+            // Clear pending payment states since user is now active!
+            localStorage.removeItem(`hrp_payment_pending_${user.uid}`);
+            localStorage.removeItem(`hrp_payment_submitted_at_${user.uid}`);
+            localStorage.removeItem(`hrp_pending_plan_${user.uid}`);
+            setPaymentPending(false);
+            setPaymentSubmittedAt(null);
         } else {
             setLicenseState(result.reason as LicenseState || 'error');
             if (result.details) {
@@ -98,22 +152,33 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
       window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  const handlePaymentSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const handlePaymentDone = () => {
       if (!user) return;
       setIsSubmittingPayment(true);
-      try {
-          // Simulate standard transaction processing latency (e.g. Stripe integration)
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          await BackendService.purchaseSubscription(user.uid, selectedPlan);
-          setShowCheckoutModal(false);
-          await validateLicense();
-      } catch (err: any) {
-          console.error(err);
-          alert("Payment processing failed. Please try again.");
-      } finally {
-          setIsSubmittingPayment(false);
-      }
+
+      const planName = selectedPlan === 'pro_monthly' 
+          ? 'Professional Monthly (₹99)' 
+          : selectedPlan === 'pro_quarterly' 
+              ? 'Professional Quarterly Plus (₹237)' 
+              : 'Professional Yearly Plus (₹588)';
+
+      const subject = `Hotel Revenue Pro Activation - Payment Completed`;
+      const body = `Hi Admin,\n\nI have successfully completed the payment of ${planName} via UPI to akashsah17-4@okhdfcbank.\n\nPlease activate my subscription.\n\nMy Account Details:\n- Email Address: ${user.email}\n- User ID: ${user.uid}\n- Selected Plan: ${selectedPlan}\n\n[Please attach a screenshot of your UPI payment receipt here]\n\nThank you!`;
+
+      // Redirect to their default email client with all pre-filled details
+      window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+      // Save to localStorage so state persists across reloads
+      const now = Date.now();
+      localStorage.setItem(`hrp_payment_pending_${user.uid}`, 'true');
+      localStorage.setItem(`hrp_payment_submitted_at_${user.uid}`, now.toString());
+      localStorage.setItem(`hrp_pending_plan_${user.uid}`, selectedPlan);
+
+      setPaymentPending(true);
+      setPaymentSubmittedAt(now);
+      setTimeLeft(900); // Reset timer to 15 minutes (900 seconds)
+      setShowCheckoutModal(false);
+      setIsSubmittingPayment(false);
   };
 
   // --- RENDER STATES ---
@@ -138,6 +203,112 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
   if (licenseState === 'authorized') {
       return <>{children}</>;
+  }
+
+  const formatTime = (seconds: number) => {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  if (paymentPending && user) {
+      return (
+          <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 font-sans text-white">
+              <div className="bg-slate-900 border border-slate-800 p-8 rounded-3xl w-full max-w-md text-center shadow-2xl relative overflow-hidden animate-in fade-in duration-300">
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl"></div>
+                  
+                  <div className="relative z-10 flex flex-col items-center">
+                      <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 mb-6 animate-pulse">
+                          <Clock className="w-8 h-8 animate-spin" style={{ animationDuration: '6s' }} />
+                      </div>
+                      
+                      <h2 className="text-2xl font-serif font-bold text-white mb-2">Activation Pending</h2>
+                      <p className="text-slate-400 text-sm mb-6">
+                          Our admin is verifying your UPI payment. Your subscription will be activated shortly.
+                      </p>
+
+                      {/* Timer */}
+                      <div className="bg-slate-950/80 border border-slate-850 px-6 py-4 rounded-2xl w-full mb-6 text-center">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Expected Activation Within</p>
+                          <div className="text-4xl font-mono font-extrabold text-amber-500 tracking-wider">
+                              {timeLeft > 0 ? formatTime(timeLeft) : "00:00"}
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-2">
+                              {timeLeft > 0 ? "Please do not close this page." : "Taking longer than usual. Admin is checking now!"}
+                          </p>
+                      </div>
+
+                      {/* User ID Box */}
+                      <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-850 w-full text-left mb-6">
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">Your User ID</p>
+                          <div className="flex items-center justify-between gap-2 bg-slate-950 p-2.5 rounded-lg border border-slate-850/50 font-mono text-xs text-indigo-300 select-all">
+                              <span className="truncate">{user.uid}</span>
+                              <button 
+                                  onClick={() => {
+                                      navigator.clipboard.writeText(user.uid);
+                                      setIsUidCopied(true);
+                                      setTimeout(() => setIsUidCopied(false), 2000);
+                                  }}
+                                  className="text-slate-500 hover:text-white shrink-0 p-1 hover:bg-slate-850 rounded transition-all"
+                                  title="Copy User ID"
+                              >
+                                  {isUidCopied ? <span className="text-[10px] text-emerald-400 font-sans font-semibold">Copied</span> : <Copy className="w-3.5 h-3.5" />}
+                              </button>
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-2">
+                              Send this ID to support if you haven't done so.
+                          </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="space-y-3 w-full">
+                          <button 
+                              onClick={validateLicense}
+                              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-950/40 text-sm"
+                          >
+                              <RefreshCw className="w-4 h-4" /> Verify Activation Now
+                          </button>
+
+                          <button 
+                              onClick={() => {
+                                  const planName = localStorage.getItem(`hrp_pending_plan_${user.uid}`) || 'pro_monthly';
+                                  const fullPlanName = planName === 'pro_monthly' ? 'Professional Monthly (₹99)' : planName === 'pro_quarterly' ? 'Professional Quarterly Plus (₹237)' : 'Professional Yearly Plus (₹588)';
+                                  const subject = `Hotel Revenue Pro Activation - Payment Completed`;
+                                  const body = `Hi Admin,\n\nI have successfully completed the payment of ${fullPlanName} via UPI to akashsah17-4@okhdfcbank.\n\nPlease activate my subscription.\n\nMy Account Details:\n- Email Address: ${user.email}\n- User ID: ${user.uid}\n\n[Please attach a screenshot of your UPI payment receipt here]\n\nThank you!`;
+                                  window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                              }}
+                              className="w-full bg-slate-800 hover:bg-slate-750 text-slate-300 font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition-all text-xs"
+                          >
+                              <Send className="w-3.5 h-3.5" /> Re-send Payment Details (Email)
+                          </button>
+
+                          <div className="pt-2 border-t border-slate-800/60 mt-4 flex gap-3 justify-center">
+                              <button 
+                                  onClick={() => {
+                                      if (confirm("Are you sure you want to cancel this pending activation window?")) {
+                                          localStorage.removeItem(`hrp_payment_pending_${user.uid}`);
+                                          localStorage.removeItem(`hrp_payment_submitted_at_${user.uid}`);
+                                          localStorage.removeItem(`hrp_pending_plan_${user.uid}`);
+                                          setPaymentPending(false);
+                                      }
+                                  }}
+                                  className="text-[11px] text-slate-500 hover:text-slate-400 font-medium"
+                              >
+                                  Cancel Request
+                              </button>
+                              <span className="text-slate-800">•</span>
+                              <button 
+                                  onClick={() => logout()}
+                                  className="text-[11px] text-red-400 hover:text-red-300 font-medium flex items-center gap-1"
+                              >
+                                  <LogOut className="w-3 h-3" /> Sign Out
+                              </button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      );
   }
 
   // --- DENY SCREENS ---
@@ -416,10 +587,10 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
             </div>
         </div>
 
-        {/* SECURE CHECKOUT MODAL */}
+        {/* SECURE CHECKOUT MODAL (UPI INTERACTION) */}
         {showCheckoutModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 text-left">
-                <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200 text-white">
                     <button 
                         onClick={() => setShowCheckoutModal(false)}
                         className="absolute top-4 right-4 p-1 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white"
@@ -429,20 +600,20 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
 
                     <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800">
                         <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500">
-                            <CreditCard className="w-5 h-5" />
+                            <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-serif font-bold text-white">Upgrade Subscription</h3>
-                            <p className="text-xs text-slate-400">Secure payment gateway</p>
+                            <h3 className="text-lg font-serif font-bold text-white">Complete UPI Payment</h3>
+                            <p className="text-xs text-slate-400">Direct instant manual activation</p>
                         </div>
                     </div>
 
-                    <form onSubmit={handlePaymentSubmit} className="space-y-4">
+                    <div className="space-y-4">
                         {/* Order Summary */}
-                        <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/60 mb-4">
+                        <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/60">
                             <div className="flex justify-between items-center text-xs text-slate-400 uppercase tracking-wider mb-2">
                                 <span>Selected Plan</span>
-                                <span>Price</span>
+                                <span>Amount Payable</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-bold text-white">
@@ -457,94 +628,70 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                             </div>
                         </div>
 
-                        {/* Cardholder name */}
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Cardholder Name</label>
-                            <input 
-                                type="text"
-                                required
-                                value={cardName}
-                                onChange={(e) => setCardName(e.target.value)}
-                                placeholder="John Doe"
-                                className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-850 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-slate-700"
-                            />
-                        </div>
-
-                        {/* Card Number */}
-                        <div>
-                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Card Number</label>
-                            <div className="relative">
-                                <input 
-                                    type="text"
-                                    required
-                                    maxLength={19}
-                                    value={cardNumber}
-                                    onChange={(e) => {
-                                        const cleanVal = e.target.value.replace(/\s?/g, '');
-                                        const parts = cleanVal.match(/.{1,4}/g);
-                                        const formatted = parts ? parts.join(' ') : cleanVal;
-                                        setCardNumber(formatted);
+                        {/* UPI Copy Box */}
+                        <div className="bg-slate-950/40 p-4 rounded-2xl border border-slate-850">
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Recipient UPI ID</label>
+                            <div className="flex items-center justify-between gap-3 bg-slate-950 p-3 rounded-xl border border-slate-850 font-mono text-sm text-amber-400 select-all">
+                                <span className="truncate font-semibold">akashsah17-4@okhdfcbank</span>
+                                <button 
+                                    onClick={() => {
+                                        navigator.clipboard.writeText("akashsah17-4@okhdfcbank");
+                                        setIsCopied(true);
+                                        setTimeout(() => setIsCopied(false), 2000);
                                     }}
-                                    placeholder="4242 4242 4242 4242"
-                                    className="w-full pl-11 pr-4 py-3 rounded-xl bg-slate-950 border border-slate-850 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors font-mono placeholder:text-slate-700"
-                                />
-                                <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                    className="bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-sans font-medium flex items-center gap-1.5 transition-all"
+                                    title="Copy UPI ID"
+                                >
+                                    {isCopied ? (
+                                        <>
+                                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                            <span className="text-emerald-400 text-[11px] font-bold">Copied</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="w-3.5 h-3.5" />
+                                            <span>Copy</span>
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
 
-                        {/* Expiry and CVC */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Expiration Date</label>
-                                <input 
-                                    type="text"
-                                    required
-                                    maxLength={5}
-                                    value={cardExpiry}
-                                    onChange={(e) => {
-                                        let val = e.target.value.replace(/\D/g, '');
-                                        if (val.length > 2) {
-                                            val = val.substring(0, 2) + '/' + val.substring(2, 4);
-                                        }
-                                        setCardExpiry(val);
-                                    }}
-                                    placeholder="MM/YY"
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-850 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors font-mono placeholder:text-slate-700"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">CVC / CVV</label>
-                                <input 
-                                    type="password"
-                                    required
-                                    maxLength={3}
-                                    value={cardCvc}
-                                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="•••"
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-850 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors font-mono placeholder:text-slate-700"
-                                />
-                            </div>
+                        {/* Payment Instructions */}
+                        <div className="text-xs text-slate-300 space-y-2.5 bg-slate-950/20 p-4 rounded-2xl border border-slate-850/40">
+                            <p className="font-bold text-slate-200">How to pay:</p>
+                            <ol className="list-decimal pl-4 space-y-1.5 text-slate-400">
+                                <li><strong>Copy</strong> the UPI ID shown above.</li>
+                                <li>Open any UPI app (e.g. <strong>GPay, PhonePe, Paytm, BHIM</strong>).</li>
+                                <li>Pay the exact amount of <strong className="text-amber-500">{selectedPlan === 'pro_monthly' ? '₹99' : selectedPlan === 'pro_quarterly' ? '₹237' : '₹588'}</strong> to this address.</li>
+                                <li>Once transaction completes, click <strong>Payment Done</strong> below.</li>
+                            </ol>
+                        </div>
+
+                        <div className="pt-2 text-center text-[11px] text-slate-400/80 leading-relaxed">
+                            ⚠️ Clicking "Payment Done" will redirect you to email your <strong>User ID</strong> and payment proof so we can manually activate your subscription. A 15-minute countdown timer will start.
                         </div>
 
                         <div className="pt-4">
                             <button
-                                type="submit"
+                                onClick={handlePaymentDone}
                                 disabled={isSubmittingPayment}
                                 className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-950/50 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold uppercase tracking-wider"
                             >
                                 {isSubmittingPayment ? (
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
-                                        <span>Processing Payment...</span>
+                                        <span>Recording Payment...</span>
                                     </>
                                 ) : (
                                     <>
-                                        <span>Authorize & Pay</span>
+                                        <Check className="w-4 h-4" />
+                                        <span>Payment Done (Activate My Account)</span>
                                     </>
                                 )}
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         )}
