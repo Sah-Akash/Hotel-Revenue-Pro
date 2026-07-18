@@ -204,32 +204,53 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                                 {
                                     id: 'pro_monthly',
                                     name: 'Professional Monthly',
-                                    price: '$49',
+                                    price: '₹99',
                                     period: 'month',
                                     billing: 'Billed monthly. Cancel anytime.',
                                     savings: null,
                                     badge: null,
-                                    color: 'border-slate-850 bg-slate-950/40'
+                                    color: 'border-slate-850 bg-slate-950/40',
+                                    features: [
+                                        'Dual-Perspective Underwriting',
+                                        'Hybrid Share & Min Guarantee Calc',
+                                        'Reverse Deal-Sizing Simulation',
+                                        'Standard PDF & CSV Exports',
+                                        'Real-time Deal Strength Score (DSS)'
+                                    ]
                                 },
                                 {
                                     id: 'pro_quarterly',
-                                    name: 'Professional Quarterly',
-                                    price: '$39',
+                                    name: 'Professional Quarterly Plus',
+                                    price: '₹79',
                                     period: 'month',
-                                    billing: 'Billed $119 every 3 months.',
+                                    billing: 'Billed ₹237 every 3 months.',
                                     savings: 'Save 20%',
                                     badge: 'Most Popular',
-                                    color: 'border-indigo-500/30 bg-indigo-950/10 shadow-[0_4px_30px_rgba(99,102,241,0.05)]'
+                                    color: 'border-indigo-500/30 bg-indigo-950/10 shadow-[0_4px_30px_rgba(99,102,241,0.05)]',
+                                    features: [
+                                        'Everything in Monthly plan',
+                                        'Plus Benefit: Multi-Scenario Comparisons (Up to 3 deals side-by-side)',
+                                        'Plus Benefit: Custom Deal-Sizing Goal Suggestions',
+                                        'Plus Benefit: Premium Executive PDF Layouts',
+                                        'Priority Email Customer Support'
+                                    ]
                                 },
                                 {
                                     id: 'pro_yearly',
-                                    name: 'Professional Yearly',
-                                    price: '$29',
+                                    name: 'Professional Yearly Plus',
+                                    price: '₹49',
                                     period: 'month',
-                                    billing: 'Billed $349 every 12 months.',
-                                    savings: 'Save 40%',
+                                    billing: 'Billed ₹588 every 12 months.',
+                                    savings: 'Save 50%',
                                     badge: 'Best Value',
-                                    color: 'border-amber-500/30 bg-amber-950/10 shadow-[0_4px_30px_rgba(245,158,11,0.05)]'
+                                    color: 'border-amber-500/30 bg-amber-950/10 shadow-[0_4px_30px_rgba(245,158,11,0.05)]',
+                                    features: [
+                                        'Everything in Monthly & Quarterly plans',
+                                        'Plus Benefit: Dynamic Holiday Seasonality Curve Modeler',
+                                        'Plus Benefit: White-label Report Branding (Insert your custom resort logo)',
+                                        'Plus Benefit: Priority Live Expert Underwriting Audits',
+                                        'VIP 24/7 Phone & Zoom Support'
+                                    ]
                                 }
                             ].map((plan) => (
                                 <div 
@@ -258,17 +279,10 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                                         <div className="text-slate-500 text-[11px] mb-6 leading-relaxed">{plan.billing}</div>
                                         
                                         <div className="space-y-3 mb-8">
-                                            {[
-                                                'Dual-Perspective Financial Engine',
-                                                'Hybrid Share % & Minimum Guarantee Calc',
-                                                'Reverse Deal-Sizing Simulation',
-                                                'Custom DSS (Deal Strength Score) Analyzer',
-                                                'Excel-ready CSV & Professional PDF Exports',
-                                                'Unlimited Real-time Deal Simulations'
-                                            ].map((feat, i) => (
+                                            {plan.features.map((feat, i) => (
                                                 <div key={i} className="flex items-start gap-2.5 text-xs text-slate-300">
                                                     <Check className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                                                    <span>{feat}</span>
+                                                    <span className={feat.startsWith('Plus Benefit:') ? "font-semibold text-indigo-300" : ""}>{feat}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -432,14 +446,14 @@ const LicenseGate: React.FC<Props> = ({ children, onAdminAccess }) => {
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-sm font-bold text-white">
-                                    {selectedPlan === 'pro_monthly' ? 'Professional Monthly' : selectedPlan === 'pro_quarterly' ? 'Professional Quarterly' : 'Professional Yearly'}
+                                    {selectedPlan === 'pro_monthly' ? 'Professional Monthly' : selectedPlan === 'pro_quarterly' ? 'Professional Quarterly Plus' : 'Professional Yearly Plus'}
                                 </span>
                                 <span className="text-base font-extrabold text-amber-500">
-                                    {selectedPlan === 'pro_monthly' ? '$49' : selectedPlan === 'pro_quarterly' ? '$119' : '$349'}
+                                    {selectedPlan === 'pro_monthly' ? '₹99' : selectedPlan === 'pro_quarterly' ? '₹237' : '₹588'}
                                 </span>
                             </div>
                             <div className="text-[10px] text-slate-500 mt-1.5">
-                                {selectedPlan === 'pro_monthly' ? 'Billed monthly. Auto-renews. Cancel anytime.' : selectedPlan === 'pro_quarterly' ? 'Billed quarterly ($119 every 3 months). Save 20%.' : 'Billed annually ($349 every 12 months). Save 40%.'}
+                                {selectedPlan === 'pro_monthly' ? 'Billed monthly. Auto-renews. Cancel anytime.' : selectedPlan === 'pro_quarterly' ? 'Billed quarterly (₹237 every 3 months). Save 20%.' : 'Billed annually (₹588 every 12 months). Save 50%.'}
                             </div>
                         </div>
 
