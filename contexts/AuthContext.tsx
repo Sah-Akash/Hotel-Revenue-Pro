@@ -20,14 +20,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
-    // Check for existing guest session
-    const isGuestSession = localStorage.getItem('revenue_pro_is_guest') === 'true';
-    if (isGuestSession) {
-        setIsGuest(true);
-        setLoading(false);
-        return;
-    }
-
     if (!auth) {
         setLoading(false);
         return;
@@ -68,8 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const continueAsGuest = () => {
-      setIsGuest(true);
-      localStorage.setItem('revenue_pro_is_guest', 'true');
+      // Guest mode removed
   };
 
   const logout = async () => {

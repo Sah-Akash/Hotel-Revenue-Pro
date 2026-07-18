@@ -20,6 +20,7 @@ const AdminDashboard: React.FC = () => {
   // Extension Modal State
   const [extensionTarget, setExtensionTarget] = useState<{id: string, name: string} | null>(null);
   const [manualDays, setManualDays] = useState<number>(30);
+  const [adminSelectedPlan, setAdminSelectedPlan] = useState<'trial' | 'pro_monthly' | 'pro_quarterly' | 'pro_yearly' | 'enterprise'>('pro_monthly');
   const [isProcessingExtension, setIsProcessingExtension] = useState(false);
 
   useEffect(() => {
@@ -51,7 +52,7 @@ const AdminDashboard: React.FC = () => {
       if (!extensionTarget) return;
       setIsProcessingExtension(true);
       try {
-        await BackendService.extendSubscription(extensionTarget.id, manualDays);
+        await BackendService.activateUserSubscription(extensionTarget.id, adminSelectedPlan, manualDays);
         await fetchData(); // Refresh UI
         setExtensionTarget(null);
       } catch(e) { 
@@ -107,30 +108,63 @@ const AdminDashboard: React.FC = () => {
         {/* MODAL OVERLAY */}
         {extensionTarget && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
                     <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                        <h3 className="text-lg font-bold text-slate-900">Manage Access</h3>
+                        <h3 className="text-lg font-bold text-slate-900">Manage Access & Plan</h3>
                         <button onClick={() => setExtensionTarget(null)} className="p-1 hover:bg-slate-200 rounded-full transition-colors"><X className="w-5 h-5 text-slate-500" /></button>
                     </div>
-                    <div className="p-6">
-                        <div className="mb-6">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">User</p>
-                            <p className="text-lg font-bold text-slate-800">{extensionTarget.name}</p>
+                    <div className="p-6 space-y-6">
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Target User</p>
+                            <p className="text-base font-bold text-slate-800">{extensionTarget.name}</p>
+                            <p className="text-[10px] font-mono text-slate-400 select-all mt-1">ID: {extensionTarget.id}</p>
                         </div>
                         
-                        <div className="mb-8">
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Add Days</label>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Subscription Plan</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {[
+                                    { id: 'trial', label: '7-Day Trial', defaultDays: 7 },
+                                    { id: 'pro_monthly', label: 'Pro Monthly', defaultDays: 30 },
+                                    { id: 'pro_quarterly', label: 'Pro Quarterly', defaultDays: 90 },
+                                    { id: 'pro_yearly', label: 'Pro Yearly', defaultDays: 365 },
+                                    { id: 'enterprise', label: 'Enterprise', defaultDays: 999 }
+                                ].map((p) => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => {
+                                            setAdminSelectedPlan(p.id as any);
+                                            setManualDays(p.defaultDays);
+                                        }}
+                                        className={`py-2.5 px-3 rounded-xl text-xs font-bold border text-center transition-all ${
+                                            adminSelectedPlan === p.id 
+                                                ? 'bg-slate-900 text-white border-slate-900 shadow-md' 
+                                                : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-3">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Access Duration</label>
+                                <span className="text-xs font-semibold text-slate-400">{Math.ceil(manualDays)} Days</span>
+                            </div>
                             <div className="flex items-center gap-2 mb-3">
-                                <button onClick={() => setManualDays(7)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${manualDays === 7 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>+7 Days</button>
-                                <button onClick={() => setManualDays(30)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${manualDays === 30 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>+30 Days</button>
-                                <button onClick={() => setManualDays(365)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${manualDays === 365 ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>+1 Year</button>
+                                <button onClick={() => setManualDays(7)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${manualDays === 7 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>7 Days</button>
+                                <button onClick={() => setManualDays(30)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${manualDays === 30 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>30 Days</button>
+                                <button onClick={() => setManualDays(90)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${manualDays === 90 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>90 Days</button>
+                                <button onClick={() => setManualDays(365)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${manualDays === 365 ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'}`}>1 Year</button>
                             </div>
                             <div className="relative">
                                 <input 
                                     type="number" 
                                     value={manualDays} 
                                     onChange={(e) => setManualDays(Number(e.target.value))}
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-lg font-bold text-slate-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all pl-4 pr-12"
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all pl-4 pr-16"
                                 />
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 uppercase pointer-events-none">Days</span>
                             </div>
@@ -142,7 +176,7 @@ const AdminDashboard: React.FC = () => {
                             className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {isProcessingExtension ? <RefreshCw className="w-5 h-5 animate-spin" /> : <CalendarPlus className="w-5 h-5" />}
-                            {isProcessingExtension ? 'Updating...' : 'Confirm Extension'}
+                            {isProcessingExtension ? 'Activating Subscription...' : 'Activate Subscription'}
                         </button>
                     </div>
                 </div>
@@ -258,8 +292,20 @@ const AdminDashboard: React.FC = () => {
                                                 ) : isExpired ? (
                                                     <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-slate-200">EXPIRED</span>
                                                 ) : (
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border flex items-center gap-1 ${user.planId === 'trial' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
-                                                        {user.planId === 'trial' ? '7-Day Trial' : 'PRO Plan'}
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border flex items-center gap-1 ${
+                                                        user.planId === 'trial' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                        user.planId === 'pro_monthly' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                                                        user.planId === 'pro_quarterly' ? 'bg-indigo-50 text-indigo-700 border-indigo-100' :
+                                                        user.planId === 'pro_yearly' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                                        user.planId === 'enterprise' ? 'bg-purple-50 text-purple-700 border-purple-100' :
+                                                        'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                                    }`}>
+                                                        {user.planId === 'trial' ? '7-Day Trial' :
+                                                         user.planId === 'pro_monthly' ? 'Pro Monthly' :
+                                                         user.planId === 'pro_quarterly' ? 'Pro Quarterly' :
+                                                         user.planId === 'pro_yearly' ? 'Pro Yearly' :
+                                                         user.planId === 'enterprise' ? 'Enterprise' :
+                                                         'PRO Plan'}
                                                     </span>
                                                 )}
                                             </div>

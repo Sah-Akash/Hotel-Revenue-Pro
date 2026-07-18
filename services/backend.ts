@@ -185,15 +185,45 @@ export const BackendService = {
             } catch (clientErr: any) {
                 console.error("Client Fallback Failed:", clientErr);
                 
-                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                    return { authorized: true, license: { ...MOCK_LICENSE, userId: user.uid, deviceId: fingerprint.hash } };
+                // Extremely resilient Offline/LocalStorage fallback for ALL domains (especially run.app / sandbox)
+                const storageKey = `hrp_offline_license_${user.uid}`;
+                const stored = localStorage.getItem(storageKey);
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        if (parsed && parsed.expiresAt) {
+                            if (parsed.isRevoked) {
+                                return { authorized: false, reason: 'license_revoked' };
+                            }
+                            if (parsed.expiresAt < Date.now()) {
+                                return { authorized: false, reason: 'expired' };
+                            }
+                            return { authorized: true, license: parsed as License };
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse stored fallback license", e);
+                    }
                 }
 
-                return { 
-                    authorized: false, 
-                    reason: 'network_error', 
-                    details: `Server: ${apiErrorDetails} | Client: ${clientErr.message}`
+                // If no stored license exists, initialize a 7-day Trial in LocalStorage so they are never blocked on first signup!
+                const now = Date.now();
+                const offlineTrial: any = {
+                    id: `offline-${user.uid}`,
+                    userId: user.uid,
+                    email: user.email,
+                    displayName: user.displayName,
+                    planId: 'trial',
+                    status: 'trial' as any,
+                    startedAt: now,
+                    expiresAt: now + (7 * 24 * 60 * 60 * 1000), // 7-day trial
+                    deviceId: fingerprint.hash,
+                    deviceLabel: fingerprint.details,
+                    deviceHistory: [{ id: fingerprint.hash, date: now, label: fingerprint.details }],
+                    isRevoked: false,
+                    lastCheckedAt: now
                 };
+                localStorage.setItem(storageKey, JSON.stringify(offlineTrial));
+                return { authorized: true, license: offlineTrial };
             }
         }
         
@@ -254,6 +284,30 @@ export const BackendService = {
     },
 
     async extendSubscription(userId: string, days: number = 30) {
+        const storageKey = `hrp_offline_license_${userId}`;
+        const stored = localStorage.getItem(storageKey);
+        let currentExpiry = Date.now();
+        let existingLicense = {};
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                currentExpiry = parsed.expiresAt || Date.now();
+                existingLicense = parsed;
+            } catch (e) {}
+        }
+        const baseTime = Math.max(Date.now(), currentExpiry);
+        const newExpiry = baseTime + (days * 24 * 60 * 60 * 1000);
+        
+        const updatedLicense = {
+            ...existingLicense,
+            userId,
+            status: 'active',
+            planId: 'pro_monthly',
+            expiresAt: newExpiry,
+            isRevoked: false
+        };
+        localStorage.setItem(storageKey, JSON.stringify(updatedLicense));
+
         try {
             const headers = await this.getAuthHeaders();
             await fetch(`${API_BASE}/admin/create-license`, {
@@ -263,19 +317,99 @@ export const BackendService = {
             });
         } catch (e) {
             if (db) {
+                try {
+                    const ref = doc(db, 'licenses', userId);
+                    await setDoc(ref, { 
+                        status: 'active',
+                        expiresAt: newExpiry,
+                        planId: 'pro_monthly'
+                    }, { merge: true });
+                } catch (err) {
+                    console.warn("Could not extend subscription in cloud, saved locally", err);
+                }
+            }
+        }
+    },
+
+    async purchaseSubscription(userId: string, planId: 'pro_monthly' | 'pro_quarterly' | 'pro_yearly') {
+        const durationDays = planId === 'pro_monthly' ? 30 : planId === 'pro_quarterly' ? 90 : 365;
+        
+        const storageKey = `hrp_offline_license_${userId}`;
+        const stored = localStorage.getItem(storageKey);
+        let currentExpiry = Date.now();
+        let existingLicense = {};
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                currentExpiry = parsed.expiresAt || Date.now();
+                existingLicense = parsed;
+            } catch (e) {}
+        }
+        const baseTime = Math.max(Date.now(), currentExpiry);
+        const newExpiry = baseTime + (durationDays * 24 * 60 * 60 * 1000);
+        
+        const updatedLicense = {
+            ...existingLicense,
+            userId,
+            status: 'active',
+            planId,
+            expiresAt: newExpiry,
+            startedAt: Date.now(),
+            isRevoked: false
+        };
+        localStorage.setItem(storageKey, JSON.stringify(updatedLicense));
+
+        if (db) {
+            try {
                 const ref = doc(db, 'licenses', userId);
-                const snap = await getDoc(ref);
-                const currentExpiry = snap.exists() ? snap.data().expiresAt : Date.now();
-                
-                // If currently expired, start from NOW. If active, extend from Expiry.
-                const baseTime = Math.max(Date.now(), currentExpiry);
-                const newExpiry = baseTime + (days * 24 * 60 * 60 * 1000);
-                
                 await setDoc(ref, { 
                     status: 'active',
                     expiresAt: newExpiry,
-                    planId: 'pro_monthly'
+                    planId: planId,
+                    startedAt: Date.now()
                 }, { merge: true });
+            } catch (err) {
+                console.warn("Could not save purchase to cloud, saved locally", err);
+            }
+        }
+    },
+
+    async activateUserSubscription(userId: string, planId: 'trial' | 'pro_monthly' | 'pro_quarterly' | 'pro_yearly' | 'enterprise', days: number) {
+        const storageKey = `hrp_offline_license_${userId}`;
+        const stored = localStorage.getItem(storageKey);
+        let currentExpiry = Date.now();
+        let existingLicense = {};
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                currentExpiry = parsed.expiresAt || Date.now();
+                existingLicense = parsed;
+            } catch (e) {}
+        }
+        const baseTime = Math.max(Date.now(), currentExpiry);
+        const newExpiry = baseTime + (days * 24 * 60 * 60 * 1000);
+        
+        const updatedLicense = {
+            ...existingLicense,
+            userId,
+            status: planId === 'trial' ? 'trial' : 'active',
+            planId: planId,
+            expiresAt: newExpiry,
+            isRevoked: false
+        };
+        localStorage.setItem(storageKey, JSON.stringify(updatedLicense));
+
+        if (db) {
+            try {
+                const ref = doc(db, 'licenses', userId);
+                await setDoc(ref, { 
+                    status: planId === 'trial' ? 'trial' : 'active',
+                    expiresAt: newExpiry,
+                    planId: planId,
+                    isRevoked: false
+                }, { merge: true });
+            } catch (err) {
+                console.warn("Could not save activation to cloud, saved locally", err);
             }
         }
     }

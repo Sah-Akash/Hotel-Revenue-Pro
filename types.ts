@@ -115,7 +115,7 @@ export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'trial';
 export interface Subscription {
     id: string;       // Usually same as User UID for 1:1 mapping
     userId: string;
-    planId: 'trial' | 'pro_monthly' | 'pro_yearly' | 'enterprise';
+    planId: 'trial' | 'pro_monthly' | 'pro_quarterly' | 'pro_yearly' | 'enterprise';
     status: SubscriptionStatus;
     startedAt: number;
     expiresAt: number;

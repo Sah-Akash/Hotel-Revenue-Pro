@@ -161,18 +161,6 @@ const Login: React.FC = () => {
 
                     {!showAdminInput ? (
                         <div className="space-y-6">
-                            {isIframe && (
-                                <a 
-                                    href={window.location.href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-white font-bold py-6 px-10 rounded-[24px] flex items-center justify-center gap-5 transition-all transform hover:-translate-y-2 hover:shadow-2xl hover:shadow-amber-500/30 group cursor-pointer text-center"
-                                >
-                                    <span className="tracking-tight text-xl">Open App in New Tab</span>
-                                    <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-all -ml-4 group-hover:ml-0" />
-                                </a>
-                            )}
-
                             <button 
                                 onClick={handleLogin}
                                 disabled={loading}
@@ -183,17 +171,9 @@ const Login: React.FC = () => {
                                 {!loading && <ArrowRight className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-all -ml-4 group-hover:ml-0" />}
                             </button>
 
-                            <button 
-                                type="button"
-                                onClick={continueAsGuest}
-                                className="w-full bg-[#0f172a]/80 hover:bg-[#1e293b]/80 text-white font-medium py-5 px-10 rounded-[24px] border border-white/10 flex items-center justify-center gap-3 transition-all transform hover:-translate-y-1 hover:border-white/20 hover:shadow-lg cursor-pointer"
-                            >
-                                <span className="tracking-tight text-lg">Continue as Guest</span>
-                            </button>
-
-                            <div className="bg-amber-500/5 border border-amber-500/15 p-5 rounded-2xl text-amber-500/90 text-xs leading-relaxed space-y-1">
-                                <span className="font-bold uppercase tracking-wider block text-[10px]">Preview Environment Note</span>
-                                <p>Third-party cookies or popup blockers in this preview pane may prevent Google Sign-In from completing. If it doesn't open or complete, please **open this app in a new tab** or select **Continue as Guest** to proceed.</p>
+                            <div className="bg-amber-500/5 border border-amber-500/15 p-5 rounded-2xl text-amber-500/90 text-xs leading-relaxed space-y-1 text-center">
+                                <span className="font-bold uppercase tracking-wider block text-[10px]">Access Information</span>
+                                <p>New members instantly receive a 7-day complimentary trial upon signing in with Google. Subscriptions can be upgraded or extended at any time.</p>
                             </div>
                         </div>
                     ) : (

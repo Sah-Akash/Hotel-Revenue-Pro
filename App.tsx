@@ -73,7 +73,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 const ADMIN_EMAIL = "aayansah17@gmail.com";
 
 const App: React.FC = () => {
-  const { user, loading: authLoading, isGuest } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [view, setView] = useState<ViewType>('login'); 
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
@@ -98,13 +98,10 @@ const App: React.FC = () => {
     if (user) {
         setView('dashboard');
         fetchProjectsFromCloud(user.uid);
-    } else if (isGuest) {
-        setView('dashboard');
-        loadProjectsFromLocalStorage();
     } else {
         setView('login');
     }
-  }, [user, authLoading, isGuest]);
+  }, [user, authLoading]);
 
   useEffect(() => {
     const storedSettings = localStorage.getItem('hotel_revenue_pro_settings');
